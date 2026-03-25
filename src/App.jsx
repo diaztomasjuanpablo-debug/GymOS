@@ -1272,3 +1272,4 @@ export default function App() {
   if (!profile) return <LoadingScreen />;
   if (profile.role === "trainer") return <TrainerApp user={session.user} profile={profile} onLogout={handleLogout} />;
   return <ClientApp user={session.user} profile={profile} onLogout={handleLogout} />;
+}
