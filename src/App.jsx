@@ -46,31 +46,31 @@ MÁQUINAS DISPONIBLES EN EL GIMNASIO:
 ${machineList}
 IMPORTANTE: Usar SOLO las máquinas listadas arriba. No mencionar equipamiento que no esté disponible.
 
-Genera exactamente ${assessment.gym_days} días de entrenamiento por semana durante 4 semanas = ${assessment.gym_days * 4} días totales.
-Cada día debe tener 5-8 ejercicios adaptados al nivel y objetivo.
+Genera exactamente ${assessment.gym_days} días de entrenamiento (una semana tipo que se repite durante el mes).
+Cada día debe tener 5-6 ejercicios adaptados al nivel y objetivo. Sé CONCISO en las instrucciones.
 
 Responde SOLO con JSON válido sin markdown:
 {
-  "summary": "análisis breve del perfil en 2 oraciones",
+  "summary": "análisis breve en 2 oraciones",
   "days_per_week": ${assessment.gym_days},
-  "total_days": ${assessment.gym_days * 4},
-  "phase1": {"name": "Semanas 1-2", "focus": "descripción"},
-  "phase2": {"name": "Semanas 3-4", "focus": "descripción"},
+  "total_days": ${assessment.gym_days},
+  "phase1": {"name": "Semanas 1-2", "focus": "descripción corta"},
+  "phase2": {"name": "Semanas 3-4", "focus": "descripción corta"},
   "days": [
     {
       "day_number": 1,
       "week": 1,
-      "name": "Día A — nombre descriptivo",
-      "focus": "grupos musculares principales",
+      "name": "Día A — nombre",
+      "focus": "músculos principales",
       "exercises": [
         {
-          "name": "Nombre exacto del ejercicio",
+          "name": "Ejercicio",
           "sets": 3,
           "reps": "12",
           "rest": "90 seg",
           "load": "Moderada",
-          "muscles": "músculos trabajados",
-          "instructions": "indicación técnica clave en 1 oración"
+          "muscles": "músculos",
+          "instructions": "indicación clave breve"
         }
       ]
     }
@@ -1223,3 +1223,4 @@ export default function App() {
   if (profile.role === "trainer") return <TrainerApp user={session.user} profile={profile} onLogout={handleLogout} />;
   return <ClientApp user={session.user} profile={profile} onLogout={handleLogout} />;
 }
+
