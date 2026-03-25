@@ -146,14 +146,31 @@ function AuthScreen({ onAuth }) {
         const { data, error } = await sb.auth.signInWithPassword({ email: form.email, password: form.password });
         if (error) throw error;
       } else {
-        const { data, error } = await sb.auth.signUp({ email: form.email, password: form.password });
-        if (error) throw error;
-        if (data.user) {
-          await sb.from("profiles").insert({
-            id: data.user.id, role, full_name: form.full_name, phone: form.phone, status: role === "client" ? "pending" : "active"
-          });
-          if (role === "trainer") {
-            const { data: gym } = await sb.from("gyms").insert({ name: form.gym_name || "Mi Gimnasio", owner_id: data.user.id }).select().single();
+        // Validate invite code for clients before creating account
+        if (role === "client") {
+          if (!form.invite_code || form.invite_code.trim().length < 4) {
+            throw new Error("Ingresá el código de invitación del gimnasio.");
+          }
+          const { data: gymData } = await sb.from("gyms").select("*").eq("invite_code", form.invite_code.trim().toUpperCase()).single();
+          if (!gymData) throw new Error("Código de invitación incorrecto. Pedíselo a tu entrenador.");
+          // Create account
+          const { data, error } = await sb.auth.signUp({ email: form.email, password: form.password });
+          if (error) throw error;
+          if (data.user) {
+            await sb.from("profiles").insert({
+              id: data.user.id, role, full_name: form.full_name, phone: form.phone,
+              status: "active", gym_id: gymData.id
+            });
+          }
+        } else {
+          const { data, error } = await sb.auth.signUp({ email: form.email, password: form.password });
+          if (error) throw error;
+          if (data.user) {
+            await sb.from("profiles").insert({
+              id: data.user.id, role, full_name: form.full_name, phone: form.phone, status: "active"
+            });
+            const inviteCode = uid6();
+            const { data: gym } = await sb.from("gyms").insert({ name: form.gym_name || "Mi Gimnasio", owner_id: data.user.id, invite_code: inviteCode }).select().single();
             if (gym) await sb.from("profiles").update({ gym_id: gym.id }).eq("id", data.user.id);
           }
         }
@@ -200,6 +217,11 @@ function AuthScreen({ onAuth }) {
                     <input style={INP} value={form.gym_name || ""} onChange={upd("gym_name")} placeholder="Ej: PowerGym Palermo" />
                   </Fld>
                 )}
+                {role === "client" && (
+                  <Fld label="Código del gimnasio *" hint="Tu entrenador te da este código">
+                    <input style={{ ...INP, textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 700, color: C.primary }} value={form.invite_code || ""} onChange={upd("invite_code")} placeholder="Ej: ABC123" maxLength={8} />
+                  </Fld>
+                )}
                 <Fld label="Teléfono (opcional)">
                   <input style={INP} value={form.phone} onChange={upd("phone")} placeholder="+54 11 0000-0000" />
                 </Fld>
@@ -220,7 +242,7 @@ function AuthScreen({ onAuth }) {
 
         {mode === "register" && role === "client" && (
           <p style={{ color: C.muted, fontSize: 12, textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
-            Después de registrarte, tu entrenador deberá activar tu cuenta para que puedas comenzar.
+            Necesitás el código de tu gimnasio para registrarte. Pedíselo a tu entrenador.
           </p>
         )}
       </div>
@@ -289,7 +311,13 @@ function TrainerApp({ user, profile, onLogout }) {
       {/* Header */}
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 800, margin: 0 }}>Gym<span style={{ color: C.primary }}>OS</span> <span style={{ fontSize: 13, fontWeight: 400, color: C.muted }}>— {gym?.name || "Panel"}</span></h1>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {gym?.invite_code && (
+            <div style={{ background: C.primary + "22", border: "1px solid " + C.primary + "44", borderRadius: 8, padding: "5px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: C.muted }}>Código del gym:</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: C.primary, letterSpacing: "0.15em" }}>{gym.invite_code}</span>
+            </div>
+          )}
           <button onClick={() => setScreen("qr")} style={{ ...BTN("primary"), padding: "8px 16px", fontSize: 13 }}>📱 QR del día</button>
           <button onClick={() => setScreen("machines")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>🏋️ Máquinas</button>
           <button onClick={onLogout} style={{ ...BTN("ghost"), padding: "8px 14px", fontSize: 13 }}>Salir</button>
@@ -1244,5 +1272,3 @@ export default function App() {
   if (!profile) return <LoadingScreen />;
   if (profile.role === "trainer") return <TrainerApp user={session.user} profile={profile} onLogout={handleLogout} />;
   return <ClientApp user={session.user} profile={profile} onLogout={handleLogout} />;
-}
-
