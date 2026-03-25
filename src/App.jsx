@@ -46,8 +46,8 @@ MÁQUINAS DISPONIBLES EN EL GIMNASIO:
 ${machineList}
 IMPORTANTE: Usar SOLO las máquinas listadas arriba. No mencionar equipamiento que no esté disponible.
 
-Genera exactamente ${assessment.gym_days} días de entrenamiento (una semana tipo que se repite durante el mes).
-Cada día debe tener 5-6 ejercicios adaptados al nivel y objetivo. Sé CONCISO en las instrucciones.
+Genera exactamente ${assessment.gym_days} días de entrenamiento (una semana tipo).
+Cada día debe tener 5-6 ejercicios. Sé CONCISO en las instrucciones (máximo 10 palabras por instrucción).
 
 Responde SOLO con JSON válido sin markdown:
 {
@@ -410,7 +410,28 @@ function ClientProfileTrainer({ client, gym, machines, onBack }) {
     setGenerating(true);
     try {
       const fullAssessment = { ...assessment, full_name: client.full_name };
-      const planData = await generateWorkoutPlan(fullAssessment, machines);
+      const weekData = await generateWorkoutPlan(fullAssessment, machines);
+
+      // Expand 1 week template into 4 weeks with progressive overload
+      const baseDays = weekData.days || [];
+      const allDays = [];
+      for (let week = 1; week <= 4; week++) {
+        baseDays.forEach((day, idx) => {
+          const loadMap = { "Liviana": ["Liviana","Liviana","Moderada","Moderada"], "Moderada": ["Moderada","Moderada","Moderada-Alta","Moderada-Alta"], "Alta": ["Alta","Alta","Alta","Alta"] };
+          allDays.push({
+            ...day,
+            day_number: (week - 1) * baseDays.length + idx + 1,
+            week,
+            exercises: day.exercises.map(ex => ({
+              ...ex,
+              sets: week >= 3 ? Math.min((ex.sets || 3) + 1, 5) : ex.sets,
+              load: loadMap[ex.load]?.[week - 1] || ex.load,
+            }))
+          });
+        });
+      }
+
+      const planData = { ...weekData, total_days: allDays.length, days: allDays };
       const now = new Date();
       await sb.from("workout_plans").update({ is_active: false }).eq("client_id", client.id);
       const { data } = await sb.from("workout_plans").insert({
@@ -420,7 +441,7 @@ function ClientProfileTrainer({ client, gym, machines, onBack }) {
         plan_data: planData, is_active: true,
       }).select().single();
       if (data) setPlan(data);
-      alert("Plan generado exitosamente ✓");
+      alert("Plan generado exitosamente ✓ — " + allDays.length + " días en total (4 semanas)");
     } catch (e) { alert("Error: " + e.message); }
     setGenerating(false);
   }
@@ -941,10 +962,11 @@ function QRCheckin({ user, profile, gym, plan, onCheckin, onBack }) {
       const { data: qrData } = await sb.from("daily_qr").select("*").eq("gym_id", profile.gym_id).eq("date", today()).eq("code", code.toUpperCase()).single();
       if (!qrData) { setError("Código incorrecto o expirado. Pedile el código de hoy a tu entrenador."); setLoading(false); return; }
 
-      // Determine next plan day
-      const { count } = await sb.from("attendance").select("*", { count: "exact", head: true }).eq("client_id", user.id);
-      const totalDays = plan?.plan_data?.total_days || 12;
-      const nextDayIndex = (count || 0) % totalDays;
+      // Determine next plan day based on past attendance
+      const { data: allAtt } = await sb.from("attendance").select("id").eq("client_id", user.id);
+      const pastCount = allAtt ? allAtt.length : 0;
+      const totalDays = plan?.plan_data?.total_days || plan?.plan_data?.days?.length || 12;
+      const nextDayIndex = pastCount % totalDays;
 
       await sb.from("attendance").upsert({ client_id: user.id, gym_id: profile.gym_id, date: today(), qr_code: code, plan_day_index: nextDayIndex }, { onConflict: "client_id,date" });
       onCheckin();
