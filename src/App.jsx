@@ -296,6 +296,15 @@ function TrainerApp({ user, profile, onLogout }) {
   // Persist screen across tab switches
   const goScreen = (s) => { setScreen(s); sessionStorage.setItem("trainer_screen", s); };
 
+  // Restore selected client after reload
+  useEffect(() => {
+    const savedClientId = sessionStorage.getItem("trainer_client_id");
+    if (savedClientId && clients.length > 0) {
+      const found = clients.find(c => c.id === savedClientId);
+      if (found) setSelectedClient(found);
+    }
+  }, [clients]);
+
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
@@ -333,7 +342,7 @@ function TrainerApp({ user, profile, onLogout }) {
   const active = clients.filter(c => c.status === "active");
 
   if (screen === "client" && selectedClient) {
-    return <ClientProfileTrainer client={selectedClient} gym={gym} machines={machines} onBack={() => { goScreen("dashboard"); loadAll(); }} />;
+    return <ClientProfileTrainer client={selectedClient} gym={gym} machines={machines} onBack={() => { sessionStorage.removeItem("trainer_client_id"); goScreen("dashboard"); loadAll(); }} />;
   }
   if (screen === "machines") {
     return <MachinesScreen gym={gym} machines={machines} onBack={() => { goScreen("dashboard"); loadAll(); }} />;
@@ -432,7 +441,7 @@ function TrainerApp({ user, profile, onLogout }) {
                   {payStatus === "pending" && daysLeft !== null && daysLeft <= 3 && daysLeft >= 0 && <Tag text={"Vence en " + daysLeft + "d"} color={C.accent} />}
                   {payStatus === "paid" && <Tag text="✓ Pagado" color={C.primary} />}
                 </div>
-                <button onClick={() => { setSelectedClient(c); goScreen("client"); }} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>Ver perfil →</button>
+                <button onClick={() => { setSelectedClient(c); sessionStorage.setItem("trainer_client_id", c.id); goScreen("client"); }} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>Ver perfil →</button>
               </div>
             );
           })}
@@ -1291,9 +1300,13 @@ export default function App() {
       else setLoading(false);
     });
     const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) loadProfile(session.user.id);
-      else { setProfile(null); setLoading(false); }
+      // Only act on real login/logout events, not tab focus events
+      if (_event === "SIGNED_OUT") {
+        setSession(null); setProfile(null); setLoading(false);
+      } else if (_event === "SIGNED_IN" && !profile) {
+        setSession(session);
+        if (session) loadProfile(session.user.id);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
