@@ -131,11 +131,26 @@ function Fld({ label, hint, children }) {
 
 // ── AUTH SCREENS ──────────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState("login"); // login | register
-  const [role, setRole] = useState("client");
-  const [form, setForm] = useState({ email: "", password: "", full_name: "", phone: "" });
+  // Detect invite code from URL: /join/GYM001 or ?gym=GYM001
+  const urlParams = new URLSearchParams(window.location.search);
+  const pathCode = window.location.pathname.split("/join/")[1]?.toUpperCase();
+  const queryCode = urlParams.get("gym")?.toUpperCase();
+  const urlInviteCode = pathCode || queryCode || "";
+
+  const [mode, setMode] = useState(urlInviteCode ? "register" : "login");
+  const [role, setRole] = useState(urlInviteCode ? "client" : "client");
+  const [gymFromUrl, setGymFromUrl] = useState(null);
+  const [form, setForm] = useState({ email: "", password: "", full_name: "", phone: "", invite_code: urlInviteCode });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // If URL has invite code, load gym name to show on screen
+  useEffect(() => {
+    if (urlInviteCode) {
+      sb.from("gyms").select("name,invite_code").eq("invite_code", urlInviteCode).single()
+        .then(({ data }) => { if (data) setGymFromUrl(data); else setError("Código de gimnasio inválido."); });
+    }
+  }, []);
 
   const upd = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -190,6 +205,15 @@ function AuthScreen({ onAuth }) {
           <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>El sistema operativo de tu gimnasio</p>
         </div>
 
+        {/* Gym banner when coming from invite link */}
+        {gymFromUrl && (
+          <div style={{ background: C.primary + "18", border: "1px solid " + C.primary + "55", borderRadius: 14, padding: "14px 18px", marginBottom: 20, textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 6 }}>🏋️</div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: C.primary, fontFamily: "'Sora',sans-serif" }}>{gymFromUrl.name}</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Creá tu cuenta para unirte a este gimnasio</div>
+          </div>
+        )}
+
         <Card>
           {/* Mode toggle */}
           <div style={{ display: "flex", background: "#0f0f1a", borderRadius: 10, padding: 4, marginBottom: 24 }}>
@@ -201,25 +225,27 @@ function AuthScreen({ onAuth }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {mode === "register" && (
               <>
-                {/* Role selector */}
-                <Fld label="Soy...">
-                  <div style={{ display: "flex", gap: 10 }}>
-                    {[["trainer","🏋️ Entrenador / Dueño"],["client","💪 Cliente del gym"]].map(([r,l]) => (
-                      <button key={r} onClick={() => setRole(r)} style={{ flex: 1, padding: 10, borderRadius: 10, border: "2px solid " + (role === r ? C.primary : C.border), background: role === r ? C.primary + "22" : "transparent", color: role === r ? C.primary : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{l}</button>
-                    ))}
-                  </div>
-                </Fld>
+                {/* Role selector — only show if NOT coming from invite link */}
+                {!urlInviteCode && (
+                  <Fld label="Soy...">
+                    <div style={{ display: "flex", gap: 10 }}>
+                      {[["trainer","🏋️ Entrenador / Dueño"],["client","💪 Cliente del gym"]].map(([r,l]) => (
+                        <button key={r} onClick={() => setRole(r)} style={{ flex: 1, padding: 10, borderRadius: 10, border: "2px solid " + (role === r ? C.primary : C.border), background: role === r ? C.primary + "22" : "transparent", color: role === r ? C.primary : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{l}</button>
+                      ))}
+                    </div>
+                  </Fld>
+                )}
                 <Fld label="Nombre completo *">
                   <input style={INP} value={form.full_name} onChange={upd("full_name")} placeholder="Juan García" />
                 </Fld>
-                {role === "trainer" && (
+                {role === "trainer" && !urlInviteCode && (
                   <Fld label="Nombre del gimnasio *">
                     <input style={INP} value={form.gym_name || ""} onChange={upd("gym_name")} placeholder="Ej: PowerGym Palermo" />
                   </Fld>
                 )}
-                {role === "client" && (
+                {role === "client" && !urlInviteCode && (
                   <Fld label="Código del gimnasio *" hint="Tu entrenador te da este código">
-                    <input style={{ ...INP, textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 700, color: C.primary }} value={form.invite_code || ""} onChange={upd("invite_code")} placeholder="Ej: ABC123" maxLength={8} />
+                    <input style={{ ...INP, textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 700, color: C.primary }} value={form.invite_code || ""} onChange={upd("invite_code")} placeholder="Ej: GYM001" maxLength={8} />
                   </Fld>
                 )}
                 <Fld label="Teléfono (opcional)">
@@ -320,6 +346,12 @@ function TrainerApp({ user, profile, onLogout }) {
           )}
           <button onClick={() => setScreen("qr")} style={{ ...BTN("primary"), padding: "8px 16px", fontSize: 13 }}>📱 QR del día</button>
           <button onClick={() => setScreen("machines")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>🏋️ Máquinas</button>
+          {gym?.invite_code && (
+            <button onClick={() => {
+              const link = window.location.origin + "/join/" + gym.invite_code;
+              navigator.clipboard.writeText(link).then(() => alert("✓ Link copiado: " + link));
+            }} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>📋 Copiar link</button>
+          )}
           <button onClick={onLogout} style={{ ...BTN("ghost"), padding: "8px 14px", fontSize: 13 }}>Salir</button>
         </div>
       </div>
