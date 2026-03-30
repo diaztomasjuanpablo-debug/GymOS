@@ -4,7 +4,15 @@ import { createClient } from "@supabase/supabase-js";
 // ── Supabase ──────────────────────────────────────────────────────
 const SB_URL = import.meta.env.VITE_SUPABASE_URL || "https://nmgptqmyzbakabbwerqx.supabase.co";
 const SB_KEY = import.meta.env.VITE_SUPABASE_KEY || "sb_publishable_ncYtAt8DpLsf3MnRBPwZGA_T1p7cYn7";
-const sb = createClient(SB_URL, SB_KEY);
+const sb = createClient(SB_URL, SB_KEY, {
+  auth: {
+    persistSession: true,
+    storageKey: "gymos-auth",
+    storage: window.localStorage,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  }
+});
 
 // ── Utils ─────────────────────────────────────────────────────────
 const uid6 = () => Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -278,12 +286,15 @@ function AuthScreen({ onAuth }) {
 
 // ── TRAINER APP ───────────────────────────────────────────────────
 function TrainerApp({ user, profile, onLogout }) {
-  const [screen, setScreen] = useState("dashboard");
+  const [screen, setScreen] = useState(() => sessionStorage.getItem("trainer_screen") || "dashboard");
   const [gym, setGym] = useState(null);
   const [clients, setClients] = useState([]);
   const [machines, setMachines] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Persist screen across tab switches
+  const goScreen = (s) => { setScreen(s); sessionStorage.setItem("trainer_screen", s); };
 
   useEffect(() => { loadAll(); }, []);
 
@@ -322,13 +333,13 @@ function TrainerApp({ user, profile, onLogout }) {
   const active = clients.filter(c => c.status === "active");
 
   if (screen === "client" && selectedClient) {
-    return <ClientProfileTrainer client={selectedClient} gym={gym} machines={machines} onBack={() => { setScreen("dashboard"); loadAll(); }} />;
+    return <ClientProfileTrainer client={selectedClient} gym={gym} machines={machines} onBack={() => { goScreen("dashboard"); loadAll(); }} />;
   }
   if (screen === "machines") {
-    return <MachinesScreen gym={gym} machines={machines} onBack={() => { setScreen("dashboard"); loadAll(); }} />;
+    return <MachinesScreen gym={gym} machines={machines} onBack={() => { goScreen("dashboard"); loadAll(); }} />;
   }
   if (screen === "qr") {
-    return <QRScreen gym={gym} onBack={() => setScreen("dashboard")} />;
+    return <QRScreen gym={gym} onBack={() => goScreen("dashboard")} />;
   }
 
   return (
@@ -344,8 +355,8 @@ function TrainerApp({ user, profile, onLogout }) {
               <span style={{ fontSize: 14, fontWeight: 800, color: C.primary, letterSpacing: "0.15em" }}>{gym.invite_code}</span>
             </div>
           )}
-          <button onClick={() => setScreen("qr")} style={{ ...BTN("primary"), padding: "8px 16px", fontSize: 13 }}>📱 QR del día</button>
-          <button onClick={() => setScreen("machines")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>🏋️ Máquinas</button>
+          <button onClick={() => goScreen("qr")} style={{ ...BTN("primary"), padding: "8px 16px", fontSize: 13 }}>📱 QR del día</button>
+          <button onClick={() => goScreen("machines")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>🏋️ Máquinas</button>
           {gym?.invite_code && (
             <button onClick={() => {
               const link = window.location.origin + "/join/" + gym.invite_code;
@@ -421,7 +432,7 @@ function TrainerApp({ user, profile, onLogout }) {
                   {payStatus === "pending" && daysLeft !== null && daysLeft <= 3 && daysLeft >= 0 && <Tag text={"Vence en " + daysLeft + "d"} color={C.accent} />}
                   {payStatus === "paid" && <Tag text="✓ Pagado" color={C.primary} />}
                 </div>
-                <button onClick={() => { setSelectedClient(c); setScreen("client"); }} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>Ver perfil →</button>
+                <button onClick={() => { setSelectedClient(c); goScreen("client"); }} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>Ver perfil →</button>
               </div>
             );
           })}
