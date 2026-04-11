@@ -910,7 +910,6 @@ function ClientApp({ user, profile, onLogout }) {
     }
     const { data: aData } = await sb.from("assessments").select("*").eq("client_id", user.id).single();
     setAssessment(aData);
-    const now = new Date();
     const { data: planData } = await sb.from("workout_plans").select("*").eq("client_id", user.id).eq("is_active", true).single();
     setPlan(planData);
     const { data: attData } = await sb.from("attendance").select("*").eq("client_id", user.id).eq("date", today()).single();
@@ -918,14 +917,15 @@ function ClientApp({ user, profile, onLogout }) {
     const { data: payData } = await sb.from("payments").select("*").eq("client_id", user.id).order("due_date", { ascending: false });
     setPayments(payData || []);
     setLoading(false);
+    return { plan: planData, attendance: attData };
   }
 
   if (loading) return <LoadingScreen />;
 
-  // Determine today's workout day
+  // Determine today's workout day — note: index can be 0 so check explicitly for null/undefined
   const todayDayIndex = todayAttendance?.plan_day_index;
   const todayWorkout = plan && todayDayIndex !== undefined && todayDayIndex !== null
-    ? plan.plan_data?.days?.[todayDayIndex]
+    ? plan.plan_data?.days?.[todayDayIndex] || null
     : null;
 
   // Payment alerts
@@ -937,7 +937,18 @@ function ClientApp({ user, profile, onLogout }) {
       : null
   ) : null;
 
-  if (screen === "checkin") return <QRCheckin user={user} profile={profile} gym={gym} plan={plan} onCheckin={() => { loadAll(); setScreen("home"); }} onBack={() => setScreen("home")} />;
+  if (screen === "checkin") return <QRCheckin user={user} profile={profile} gym={gym} plan={plan} onCheckin={async (dayIndex) => {
+    await loadAll();
+    // Navigate directly to workout if we have the plan day
+    const workout = plan?.plan_data?.days?.[dayIndex];
+    if (workout) setScreen("workout_direct_" + dayIndex);
+    else setScreen("home");
+  }} onBack={() => setScreen("home")} />;
+  if (screen.startsWith("workout_direct_")) {
+    const idx = parseInt(screen.split("workout_direct_")[1]);
+    const workout = plan?.plan_data?.days?.[idx];
+    if (workout) return <WorkoutScreen workout={workout} onBack={() => setScreen("home")} />;
+  }
   if (screen === "workout" && todayWorkout) return <WorkoutScreen workout={todayWorkout} onBack={() => setScreen("home")} />;
   if (screen === "test") return <ClientTestScreen user={user} assessment={assessment} onSave={(a) => { setAssessment(a); setScreen("home"); }} onBack={() => setScreen("home")} />;
 
@@ -1034,23 +1045,47 @@ function QRCheckin({ user, profile, gym, plan, onCheckin, onBack }) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   async function handleCheckin() {
     if (code.length !== 6) { setError("El código debe tener 6 caracteres."); return; }
     setLoading(true); setError("");
     try {
-      const { data: qrData } = await sb.from("daily_qr").select("*").eq("gym_id", profile.gym_id).eq("date", today()).eq("code", code.toUpperCase()).single();
-      if (!qrData) { setError("Código incorrecto o expirado. Pedile el código de hoy a tu entrenador."); setLoading(false); return; }
+      // 1. Verify QR code
+      const { data: qrData, error: qrError } = await sb.from("daily_qr")
+        .select("*")
+        .eq("gym_id", profile.gym_id)
+        .eq("date", today())
+        .eq("code", code.toUpperCase())
+        .single();
 
-      // Determine next plan day based on past attendance
-      const { data: allAtt } = await sb.from("attendance").select("id").eq("client_id", user.id);
+      if (qrError || !qrData) {
+        setError("Código incorrecto o expirado. Pedile el código de hoy a tu entrenador.");
+        setLoading(false);
+        return;
+      }
+
+      // 2. Calculate which day of the plan corresponds to today
+      const { data: allAtt } = await sb.from("attendance")
+        .select("id")
+        .eq("client_id", user.id);
       const pastCount = allAtt ? allAtt.length : 0;
-      const totalDays = plan?.plan_data?.total_days || plan?.plan_data?.days?.length || 12;
+      const totalDays = plan?.plan_data?.days?.length || 12;
       const nextDayIndex = pastCount % totalDays;
 
-      await sb.from("attendance").upsert({ client_id: user.id, gym_id: profile.gym_id, date: today(), qr_code: code, plan_day_index: nextDayIndex }, { onConflict: "client_id,date" });
-      onCheckin();
-    } catch (e) { setError("Error: " + e.message); }
+      // 3. Register attendance (without qr_code field — not in schema)
+      const { error: attError } = await sb.from("attendance").upsert(
+        { client_id: user.id, gym_id: profile.gym_id, date: today(), plan_day_index: nextDayIndex },
+        { onConflict: "client_id,date" }
+      );
+
+      if (attError) { setError("Error al registrar asistencia: " + attError.message); setLoading(false); return; }
+
+      // 4. Show success then go directly to workout
+      setSuccess(true);
+      setTimeout(() => onCheckin(nextDayIndex), 1200);
+
+    } catch (e) { setError("Error inesperado: " + e.message); }
     setLoading(false);
   }
 
@@ -1063,18 +1098,28 @@ function QRCheckin({ user, profile, gym, plan, onCheckin, onBack }) {
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
         <div style={{ textAlign: "center", maxWidth: 360, width: "100%" }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}>📱</div>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 24, fontWeight: 800, margin: "0 0 8px" }}>¿Ya estás en el gym?</h2>
-          <p style={{ color: C.muted, fontSize: 14, margin: "0 0 32px", lineHeight: 1.6 }}>Ingresá el código de 6 letras que muestra el entrenador en su pantalla hoy.</p>
-          <input
-            style={{ ...INP, textAlign: "center", fontSize: 32, fontWeight: 800, letterSpacing: "0.3em", color: C.primary, padding: "16px", marginBottom: 8 }}
-            value={code} onChange={e => setCode(e.target.value.toUpperCase().slice(0, 6))}
-            placeholder="XXXXXX" maxLength={6}
-          />
-          {error && <div style={{ background: C.danger + "22", border: "1px solid " + C.danger + "66", borderRadius: 10, padding: "10px 14px", color: C.danger, fontSize: 13, marginBottom: 14 }}>{error}</div>}
-          <button onClick={handleCheckin} disabled={loading || code.length !== 6} style={{ ...BTN("primary"), padding: "14px", fontSize: 16, width: "100%", marginTop: 8, opacity: code.length !== 6 ? 0.5 : 1 }}>
-            {loading ? "Verificando..." : "✓ Confirmar asistencia"}
-          </button>
+          {success ? (
+            <div>
+              <div style={{ fontSize: 80, marginBottom: 16 }}>✅</div>
+              <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, margin: "0 0 8px", color: C.primary }}>¡Asistencia registrada!</h2>
+              <p style={{ color: C.muted, fontSize: 14 }}>Abriendo tu rutina de hoy...</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 64, marginBottom: 16 }}>📱</div>
+              <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 24, fontWeight: 800, margin: "0 0 8px" }}>¿Ya estás en el gym?</h2>
+              <p style={{ color: C.muted, fontSize: 14, margin: "0 0 32px", lineHeight: 1.6 }}>Ingresá el código de 6 letras que muestra el entrenador en su pantalla hoy.</p>
+              <input
+                style={{ ...INP, textAlign: "center", fontSize: 32, fontWeight: 800, letterSpacing: "0.3em", color: C.primary, padding: "16px", marginBottom: 8 }}
+                value={code} onChange={e => setCode(e.target.value.toUpperCase().slice(0, 6))}
+                placeholder="XXXXXX" maxLength={6}
+              />
+              {error && <div style={{ background: C.danger + "22", border: "1px solid " + C.danger + "66", borderRadius: 10, padding: "10px 14px", color: C.danger, fontSize: 13, marginBottom: 14 }}>{error}</div>}
+              <button onClick={handleCheckin} disabled={loading || code.length !== 6} style={{ ...BTN("primary"), padding: "14px", fontSize: 16, width: "100%", marginTop: 8, opacity: code.length !== 6 ? 0.5 : 1 }}>
+                {loading ? "Verificando..." : "✓ Confirmar asistencia"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
