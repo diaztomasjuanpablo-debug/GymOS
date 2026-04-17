@@ -155,7 +155,7 @@ function AuthScreen({ onAuth }) {
   // If URL has invite code, load gym name to show on screen
   useEffect(() => {
     if (urlInviteCode) {
-      sb.from("gyms").select("name,invite_code").eq("invite_code", urlInviteCode).single()
+      sb.from("gyms").select("id,name,invite_code").eq("invite_code", urlInviteCode).single()
         .then(({ data }) => { if (data) setGymFromUrl(data); else setError("Código de gimnasio inválido."); });
     }
   }, []);
@@ -168,33 +168,45 @@ function AuthScreen({ onAuth }) {
       if (mode === "login") {
         const { data, error } = await sb.auth.signInWithPassword({ email: form.email, password: form.password });
         if (error) throw error;
+        if (data.user) onAuth(data.user.id);
       } else {
-        // Validate invite code for clients before creating account
         if (role === "client") {
-          if (!form.invite_code || form.invite_code.trim().length < 4) {
-            throw new Error("Ingresá el código de invitación del gimnasio.");
+          // Use already-loaded gym from URL invite link; otherwise query by typed code
+          let gymData = gymFromUrl?.id ? gymFromUrl : null;
+          if (!gymData) {
+            const code = form.invite_code?.trim().toUpperCase();
+            if (!code || code.length < 4) throw new Error("Ingresá el código de invitación del gimnasio.");
+            const { data: g } = await sb.from("gyms").select("*").eq("invite_code", code).single();
+            if (!g) throw new Error("Código de invitación incorrecto. Pedíselo a tu entrenador.");
+            gymData = g;
           }
-          const { data: gymData } = await sb.from("gyms").select("*").eq("invite_code", form.invite_code.trim().toUpperCase()).single();
-          if (!gymData) throw new Error("Código de invitación incorrecto. Pedíselo a tu entrenador.");
-          // Create account
           const { data, error } = await sb.auth.signUp({ email: form.email, password: form.password });
           if (error) throw error;
           if (data.user) {
-            await sb.from("profiles").insert({
+            const { error: pe } = await sb.from("profiles").insert({
               id: data.user.id, role, full_name: form.full_name, phone: form.phone,
               status: "active", gym_id: gymData.id
             });
+            if (pe) throw pe;
+            onAuth(data.user.id);
           }
         } else {
+          // Trainer: 1) profile, 2) gym, 3) link — all before signalling auth
           const { data, error } = await sb.auth.signUp({ email: form.email, password: form.password });
           if (error) throw error;
           if (data.user) {
-            await sb.from("profiles").insert({
+            const { error: pe } = await sb.from("profiles").insert({
               id: data.user.id, role, full_name: form.full_name, phone: form.phone, status: "active"
             });
+            if (pe) throw pe;
             const inviteCode = uid6();
-            const { data: gym } = await sb.from("gyms").insert({ name: form.gym_name || "Mi Gimnasio", owner_id: data.user.id, invite_code: inviteCode }).select().single();
-            if (gym) await sb.from("profiles").update({ gym_id: gym.id }).eq("id", data.user.id);
+            const { data: gym, error: ge } = await sb.from("gyms").insert({
+              name: form.gym_name || "Mi Gimnasio", owner_id: data.user.id, invite_code: inviteCode
+            }).select().single();
+            if (ge) throw ge;
+            const { error: le } = await sb.from("profiles").update({ gym_id: gym.id }).eq("id", data.user.id);
+            if (le) throw le;
+            onAuth(data.user.id);
           }
         }
       }
@@ -1345,12 +1357,11 @@ export default function App() {
       else setLoading(false);
     });
     const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
-      // Only act on real login/logout events, not tab focus events
       if (_event === "SIGNED_OUT") {
         setSession(null); setProfile(null); setLoading(false);
-      } else if (_event === "SIGNED_IN" && !profile) {
+      } else if (_event === "SIGNED_IN") {
         setSession(session);
-        if (session) loadProfile(session.user.id);
+        // loadProfile is called by AuthScreen.onAuth after all DB ops complete
       }
     });
     return () => subscription.unsubscribe();
@@ -1369,7 +1380,7 @@ export default function App() {
   }
 
   if (loading) return <LoadingScreen />;
-  if (!session) return <AuthScreen onAuth={() => {}} />;
+  if (!session) return <AuthScreen onAuth={(userId) => loadProfile(userId)} />;
   if (!profile) return <LoadingScreen />;
   if (profile.role === "trainer") return <TrainerApp user={session.user} profile={profile} onLogout={handleLogout} />;
   return <ClientApp user={session.user} profile={profile} onLogout={handleLogout} />;
