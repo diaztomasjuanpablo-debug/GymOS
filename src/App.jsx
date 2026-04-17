@@ -569,7 +569,35 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
       notes: newPayment.notes || selectedPlan.name,
       status: "paid",
     }).select().single();
-    if (data) { setPayments(prev => [...prev, data]); setNewPayment({ plan_id: "", payment_date: today(), notes: "" }); }
+    if (data) {
+      setPayments(prev => [...prev, data]);
+      setNewPayment({ plan_id: "", payment_date: today(), notes: "" });
+      // Send confirmation email — fire and forget, never blocks the payment
+      fetch("/api/sendEmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: client.id,
+          clientName: client.full_name || "Cliente",
+          planName: selectedPlan.name,
+          amount: selectedPlan.price.toLocaleString(),
+          paymentDate: fmtDate(paymentDate),
+          dueDate: fmtDate(dueDate),
+          gymName: gym.name,
+        }),
+      }).catch(err => console.error("Email no enviado:", err));
+    }
+  }
+
+  async function deletePayment(payId) {
+    if (!confirm("¿Eliminar este registro de pago? Esta acción no se puede deshacer.")) return;
+    const { error } = await sb.from("payments").delete().eq("id", payId);
+    if (!error) {
+      setPayments(prev => prev.filter(p => p.id !== payId));
+      alert("Registro eliminado");
+    } else {
+      alert("Error al eliminar: " + error.message);
+    }
   }
 
   async function updatePaymentStatus(payId, status) {
@@ -720,7 +748,7 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
         )}
 
         {tab === "pagos" && (
-          <PaymentsTab payments={payments} plans={plans} onAdd={addPayment} onUpdateStatus={updatePaymentStatus} newPayment={newPayment} setNewPayment={setNewPayment} />
+          <PaymentsTab payments={payments} plans={plans} onAdd={addPayment} onUpdateStatus={updatePaymentStatus} onDelete={deletePayment} newPayment={newPayment} setNewPayment={setNewPayment} />
         )}
       </div>
     </div>
@@ -750,7 +778,7 @@ function BodyAnalysisTab({ assessment, onSave }) {
   );
 }
 
-function PaymentsTab({ payments, plans, onAdd, onUpdateStatus, newPayment, setNewPayment }) {
+function PaymentsTab({ payments, plans, onAdd, onUpdateStatus, onDelete, newPayment, setNewPayment }) {
   const upd = k => e => setNewPayment(p => ({ ...p, [k]: e.target.value }));
   const statusColors = { pending: C.accent, paid: C.primary, overdue: C.danger };
   const statusLabels = { pending: "Pendiente", paid: "Pagado", overdue: "Vencido" };
@@ -801,6 +829,7 @@ function PaymentsTab({ payments, plans, onAdd, onUpdateStatus, newPayment, setNe
             </div>
             <Tag text={statusLabels[p.status]} color={statusColors[p.status]} />
             {p.status !== "paid" && <button onClick={() => onUpdateStatus(p.id, "paid")} style={{ ...BTN("primary"), padding: "6px 12px", fontSize: 12 }}>Marcar pagado</button>}
+            <button onClick={() => onDelete(p.id)} title="Eliminar registro" style={{ background: "transparent", border: "none", color: C.danger, cursor: "pointer", fontSize: 17, padding: "4px 6px", lineHeight: 1 }}>🗑️</button>
           </div>
         ))}
       </Card>
