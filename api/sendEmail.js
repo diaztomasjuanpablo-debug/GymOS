@@ -1,6 +1,9 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  // 1. Log incoming request
+  console.log("sendEmail called with body:", JSON.stringify(req.body));
+
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://nmgptqmyzbakabbwerqx.supabase.co";
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,9 +24,14 @@ export default async function handler(req, res) {
       });
       const userData = await userRes.json();
       to = userData.email || null;
+      // 2. Log fetched email
+      console.log("Email del cliente:", to);
     } catch (err) {
-      console.error("Could not fetch client email:", err);
+      // 4. Detailed catch for Supabase fetch
+      console.error("Error detallado:", err.message, err.stack);
     }
+  } else {
+    console.log("Skipping Supabase email fetch — clientId:", clientId, "| SERVICE_KEY set:", !!SUPABASE_SERVICE_KEY);
   }
 
   if (!to) return res.status(400).json({ error: "No se pudo obtener el email del cliente" });
@@ -43,7 +51,7 @@ export default async function handler(req, res) {
   `;
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
+    const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -56,10 +64,15 @@ export default async function handler(req, res) {
         html,
       }),
     });
-    const data = await response.json();
-    if (!response.ok) return res.status(response.status).json(data);
+    const resendBody = await resendRes.json();
+    // 3. Log Resend response
+    console.log("Resend response status:", resendRes.status);
+    console.log("Resend response body:", JSON.stringify(resendBody));
+    if (!resendRes.ok) return res.status(resendRes.status).json(resendBody);
     return res.status(200).json({ ok: true });
   } catch (err) {
+    // 4. Detailed catch for Resend call
+    console.error("Error detallado:", err.message, err.stack);
     return res.status(500).json({ error: err.message });
   }
 }
