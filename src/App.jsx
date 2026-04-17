@@ -302,6 +302,7 @@ function TrainerApp({ user, profile, onLogout }) {
   const [gym, setGym] = useState(null);
   const [clients, setClients] = useState([]);
   const [machines, setMachines] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -330,6 +331,8 @@ function TrainerApp({ user, profile, onLogout }) {
       setClients(clientsData || []);
       const { data: mData } = await sb.from("machines").select("*").eq("gym_id", gymData.id).order("category");
       setMachines(mData || []);
+      const { data: plansData } = await sb.from("membership_plans").select("*").eq("gym_id", gymData.id).order("price");
+      setPlans(plansData || []);
     }
     setLoading(false);
   }
@@ -354,10 +357,13 @@ function TrainerApp({ user, profile, onLogout }) {
   const active = clients.filter(c => c.status === "active");
 
   if (screen === "client" && selectedClient) {
-    return <ClientProfileTrainer client={selectedClient} gym={gym} machines={machines} onBack={() => { sessionStorage.removeItem("trainer_client_id"); goScreen("dashboard"); loadAll(); }} />;
+    return <ClientProfileTrainer client={selectedClient} gym={gym} machines={machines} plans={plans} onBack={() => { sessionStorage.removeItem("trainer_client_id"); goScreen("dashboard"); loadAll(); }} />;
   }
   if (screen === "machines") {
     return <MachinesScreen gym={gym} machines={machines} onBack={() => { goScreen("dashboard"); loadAll(); }} />;
+  }
+  if (screen === "plans") {
+    return <MembershipPlansScreen gym={gym} onBack={() => { goScreen("dashboard"); loadAll(); }} />;
   }
   if (screen === "qr") {
     return <QRScreen gym={gym} onBack={() => goScreen("dashboard")} />;
@@ -378,6 +384,7 @@ function TrainerApp({ user, profile, onLogout }) {
           )}
           <button onClick={() => goScreen("qr")} style={{ ...BTN("primary"), padding: "8px 16px", fontSize: 13 }}>📱 QR del día</button>
           <button onClick={() => goScreen("machines")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>🏋️ Máquinas</button>
+          <button onClick={() => goScreen("plans")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>💳 Planes</button>
           {gym?.invite_code && (
             <button onClick={() => {
               const link = window.location.origin + "/join/" + gym.invite_code;
@@ -464,7 +471,7 @@ function TrainerApp({ user, profile, onLogout }) {
 }
 
 // ── CLIENT PROFILE (trainer view) ─────────────────────────────────
-function ClientProfileTrainer({ client, gym, machines, onBack }) {
+function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
   const [tab, setTab] = useState("perfil");
   const [assessment, setAssessment] = useState(client.assessments || null);
   const [plan, setPlan] = useState(null);
@@ -472,7 +479,7 @@ function ClientProfileTrainer({ client, gym, machines, onBack }) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [physTest, setPhysTest] = useState({});
-  const [newPayment, setNewPayment] = useState({ amount: "", due_date: "", notes: "" });
+  const [newPayment, setNewPayment] = useState({ plan_id: "", payment_date: today(), notes: "" });
 
   useEffect(() => { loadPlan(); }, []);
 
@@ -545,13 +552,24 @@ function ClientProfileTrainer({ client, gym, machines, onBack }) {
   }
 
   async function addPayment() {
-    if (!newPayment.amount || !newPayment.due_date) return;
+    if (!newPayment.plan_id) return;
+    const selectedPlan = plans.find(p => p.id === newPayment.plan_id);
+    if (!selectedPlan) return;
+    const paymentDate = newPayment.payment_date || today();
+    const due = new Date(paymentDate);
+    due.setDate(due.getDate() + 30);
+    const dueDate = due.toISOString().split("T")[0];
     const { data } = await sb.from("payments").insert({
       client_id: client.id, gym_id: gym.id,
-      amount: parseFloat(newPayment.amount), due_date: newPayment.due_date,
-      notes: newPayment.notes, status: "pending"
+      plan_id: newPayment.plan_id,
+      amount: selectedPlan.price,
+      payment_date: paymentDate,
+      due_date: dueDate,
+      paid_date: paymentDate,
+      notes: newPayment.notes || selectedPlan.name,
+      status: "paid",
     }).select().single();
-    if (data) { setPayments(prev => [...prev, data]); setNewPayment({ amount: "", due_date: "", notes: "" }); }
+    if (data) { setPayments(prev => [...prev, data]); setNewPayment({ plan_id: "", payment_date: today(), notes: "" }); }
   }
 
   async function updatePaymentStatus(payId, status) {
@@ -702,7 +720,7 @@ function ClientProfileTrainer({ client, gym, machines, onBack }) {
         )}
 
         {tab === "pagos" && (
-          <PaymentsTab payments={payments} onAdd={addPayment} onUpdateStatus={updatePaymentStatus} newPayment={newPayment} setNewPayment={setNewPayment} />
+          <PaymentsTab payments={payments} plans={plans} onAdd={addPayment} onUpdateStatus={updatePaymentStatus} newPayment={newPayment} setNewPayment={setNewPayment} />
         )}
       </div>
     </div>
@@ -732,22 +750,45 @@ function BodyAnalysisTab({ assessment, onSave }) {
   );
 }
 
-function PaymentsTab({ payments, onAdd, onUpdateStatus, newPayment, setNewPayment }) {
+function PaymentsTab({ payments, plans, onAdd, onUpdateStatus, newPayment, setNewPayment }) {
   const upd = k => e => setNewPayment(p => ({ ...p, [k]: e.target.value }));
   const statusColors = { pending: C.accent, paid: C.primary, overdue: C.danger };
   const statusLabels = { pending: "Pendiente", paid: "Pagado", overdue: "Vencido" };
+  const selectedPlan = plans?.find(p => p.id === newPayment.plan_id);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Card>
         <h3 style={{ margin: "0 0 16px", color: C.primary, fontSize: 15 }}>Registrar cuota</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-          <Fld label="Monto ($)"><input style={INP} type="number" value={newPayment.amount} onChange={upd("amount")} placeholder="Ej: 15000" /></Fld>
-          <Fld label="Fecha de vencimiento"><input style={INP} type="date" value={newPayment.due_date} onChange={upd("due_date")} /></Fld>
-        </div>
-        <Fld label="Nota (opcional)">
-          <input style={INP} value={newPayment.notes} onChange={upd("notes")} placeholder="Ej: Cuota Enero 2025" />
-        </Fld>
-        <button onClick={onAdd} style={{ ...BTN("primary"), marginTop: 12, padding: "10px 20px" }}>+ Agregar cuota</button>
+        {!plans || plans.length === 0 ? (
+          <div style={{ background: C.accent + "18", border: "1px solid " + C.accent + "44", borderRadius: 10, padding: "14px 16px", fontSize: 13, color: C.accent }}>
+            ⚠️ No hay planes configurados. Creá planes desde <strong>💳 Planes</strong> en el panel principal.
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <Fld label="Plan de membresía *">
+                <select style={INP} value={newPayment.plan_id} onChange={upd("plan_id")}>
+                  <option value="">Seleccionar plan...</option>
+                  {plans.map(p => <option key={p.id} value={p.id}>{p.name} — ${p.price?.toLocaleString()}</option>)}
+                </select>
+              </Fld>
+              <Fld label="Fecha de pago">
+                <input style={INP} type="date" value={newPayment.payment_date} onChange={upd("payment_date")} />
+              </Fld>
+            </div>
+            {selectedPlan && (
+              <div style={{ background: C.primary + "18", border: "1px solid " + C.primary + "33", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12, display: "flex", alignItems: "center", gap: 16 }}>
+                <span style={{ fontWeight: 800, color: C.primary, fontSize: 16 }}>${selectedPlan.price?.toLocaleString()}</span>
+                {selectedPlan.sessions_per_week && <span style={{ color: C.muted }}>{selectedPlan.sessions_per_week}</span>}
+                <span style={{ color: C.muted, marginLeft: "auto" }}>Vence en 30 días</span>
+              </div>
+            )}
+            <Fld label="Nota (opcional)">
+              <input style={INP} value={newPayment.notes} onChange={upd("notes")} placeholder="Ej: Cuota Abril 2026" />
+            </Fld>
+            <button onClick={onAdd} disabled={!newPayment.plan_id} style={{ ...BTN("primary"), marginTop: 12, padding: "10px 20px", opacity: !newPayment.plan_id ? 0.5 : 1 }}>+ Registrar cuota</button>
+          </>
+        )}
       </Card>
       <Card>
         <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Historial de pagos</h3>
@@ -755,7 +796,7 @@ function PaymentsTab({ payments, onAdd, onUpdateStatus, newPayment, setNewPaymen
           <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < payments.length - 1 ? "1px solid " + C.border : "none" }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600 }}>${p.amount?.toLocaleString()}</div>
-              <div style={{ fontSize: 12, color: C.muted }}>Vence: {fmtDate(p.due_date)}{p.paid_date ? " · Pagado: " + fmtDate(p.paid_date) : ""}</div>
+              <div style={{ fontSize: 12, color: C.muted }}>Pagado: {fmtDate(p.payment_date || p.paid_date)} · Vence: {fmtDate(p.due_date)}</div>
               {p.notes && <div style={{ fontSize: 12, color: C.muted }}>{p.notes}</div>}
             </div>
             <Tag text={statusLabels[p.status]} color={statusColors[p.status]} />
@@ -763,6 +804,115 @@ function PaymentsTab({ payments, onAdd, onUpdateStatus, newPayment, setNewPaymen
           </div>
         ))}
       </Card>
+    </div>
+  );
+}
+
+// ── MEMBERSHIP PLANS SCREEN ───────────────────────────────────────
+function MembershipPlansScreen({ gym, onBack }) {
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ name: "", price: "", sessions_per_week: "" });
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const upd = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+  const updEdit = k => e => setEditForm(f => ({ ...f, [k]: e.target.value }));
+
+  useEffect(() => { loadPlans(); }, []);
+
+  async function loadPlans() {
+    setLoading(true);
+    const { data } = await sb.from("membership_plans").select("*").eq("gym_id", gym.id).order("price");
+    setPlans(data || []);
+    setLoading(false);
+  }
+
+  async function addPlan() {
+    if (!form.name.trim() || !form.price) return;
+    const { data } = await sb.from("membership_plans").insert({
+      gym_id: gym.id, name: form.name, price: parseFloat(form.price),
+      sessions_per_week: form.sessions_per_week || null,
+    }).select().single();
+    if (data) { setPlans(prev => [...prev, data]); setForm({ name: "", price: "", sessions_per_week: "" }); }
+  }
+
+  async function savePlan(id) {
+    if (!editForm.name?.trim() || !editForm.price) return;
+    const { data } = await sb.from("membership_plans").update({
+      name: editForm.name, price: parseFloat(editForm.price),
+      sessions_per_week: editForm.sessions_per_week || null,
+    }).eq("id", id).select().single();
+    if (data) { setPlans(prev => prev.map(p => p.id === id ? data : p)); setEditingId(null); }
+  }
+
+  async function deletePlan(id) {
+    if (!confirm("¿Eliminar este plan?")) return;
+    await sb.from("membership_plans").delete().eq("id", id);
+    setPlans(prev => prev.filter(p => p.id !== id));
+  }
+
+  if (loading) return <LoadingScreen />;
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text }}>
+      <style>{GF}</style>
+      <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 58, display: "flex", alignItems: "center", gap: 14 }}>
+        <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>← Panel</button>
+        <div style={{ width: 1, height: 18, background: C.border }} />
+        <span style={{ fontWeight: 700 }}>💳 Planes de Membresía</span>
+        <Tag text={plans.length + " planes"} color={C.primary} />
+      </div>
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: "26px 24px" }}>
+        <Card style={{ marginBottom: 24 }}>
+          <h3 style={{ margin: "0 0 14px", color: C.primary, fontSize: 14, fontWeight: 700 }}>Crear nuevo plan</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
+            <Fld label="Nombre del plan *">
+              <input style={INP} value={form.name} onChange={upd("name")} placeholder='Ej: Plan 3 veces por semana' />
+            </Fld>
+            <Fld label="Precio ($) *">
+              <input style={INP} type="number" value={form.price} onChange={upd("price")} placeholder="Ej: 15000" />
+            </Fld>
+            <Fld label="Descripción corta">
+              <input style={INP} value={form.sessions_per_week} onChange={upd("sessions_per_week")} placeholder="Ej: 3 veces/semana" />
+            </Fld>
+            <button onClick={addPlan} style={{ ...BTN("primary"), padding: "10px 20px", whiteSpace: "nowrap" }}>+ Agregar</button>
+          </div>
+        </Card>
+        {plans.length === 0 ? (
+          <Card style={{ textAlign: "center", padding: "48px" }}>
+            <div style={{ fontSize: 48, marginBottom: 10 }}>💳</div>
+            <p style={{ fontWeight: 600, color: C.muted, fontSize: 15 }}>Aún no configuraste planes</p>
+            <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>Creá tu primer plan para poder registrar cuotas de clientes</p>
+          </Card>
+        ) : (
+          <Card>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Planes activos</h3>
+            {plans.map((plan, i) => (
+              <div key={plan.id} style={{ padding: "14px 0", borderBottom: i < plans.length - 1 ? "1px solid " + C.border : "none" }}>
+                {editingId === plan.id ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto auto", gap: 10, alignItems: "end" }}>
+                    <Fld label="Nombre"><input style={INP} value={editForm.name} onChange={updEdit("name")} /></Fld>
+                    <Fld label="Precio ($)"><input style={INP} type="number" value={editForm.price} onChange={updEdit("price")} /></Fld>
+                    <Fld label="Descripción"><input style={INP} value={editForm.sessions_per_week || ""} onChange={updEdit("sessions_per_week")} /></Fld>
+                    <button onClick={() => savePlan(plan.id)} style={{ ...BTN("primary"), padding: "8px 14px", fontSize: 13 }}>✓</button>
+                    <button onClick={() => setEditingId(null)} style={{ ...BTN("ghost"), padding: "8px 14px", fontSize: 13 }}>✕</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{plan.name}</div>
+                      {plan.sessions_per_week && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{plan.sessions_per_week}</div>}
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 20, color: C.primary, fontFamily: "'Sora',sans-serif" }}>${plan.price?.toLocaleString()}</div>
+                    <button onClick={() => { setEditingId(plan.id); setEditForm({ name: plan.name, price: plan.price, sessions_per_week: plan.sessions_per_week || "" }); }} style={{ ...BTN("ghost"), padding: "6px 14px", fontSize: 12 }}>Editar</button>
+                    <button onClick={() => deletePlan(plan.id)} style={{ ...BTN("ghost"), padding: "6px 10px", fontSize: 12, color: C.danger, borderColor: C.danger + "44" }}>✕</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
@@ -1221,18 +1371,24 @@ function ClientTestScreen({ user, assessment, onSave, onBack }) {
 
   async function handleSave() {
     setSaving(true);
-    const data = { ...form, client_completed: true };
-    let result;
-    if (assessment) {
-      const { data: d } = await sb.from("assessments").update(data).eq("client_id", user.id).select().single();
-      result = d;
-    } else {
-      const { data: d } = await sb.from("assessments").insert({ client_id: user.id, ...data }).select().single();
-      result = d;
+    try {
+      const payload = { client_id: user.id, ...form, client_completed: true };
+      const { data: result, error } = await sb.from("assessments")
+        .upsert(payload, { onConflict: "client_id" })
+        .select()
+        .single();
+      if (error) {
+        console.error("Supabase error:", JSON.stringify(error));
+        throw error;
+      }
+      if (result) onSave(result);
+      else alert("Error al guardar. Intentá de nuevo.");
+    } catch (err) {
+      console.error("Assessment error:", err);
+      alert("Error al guardar: " + (err.message || JSON.stringify(err)));
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    if (result) onSave(result);
-    else alert("Error al guardar. Intentá de nuevo.");
   }
 
   return (
