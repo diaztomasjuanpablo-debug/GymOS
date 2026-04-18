@@ -1318,66 +1318,293 @@ function QRCheckin({ user, profile, gym, plan, onCheckin, onBack }) {
 }
 
 // ── WORKOUT SCREEN ────────────────────────────────────────────────
-function WorkoutScreen({ workout, onBack }) {
-  const [expandedEx, setExpandedEx] = useState(null);
+const OM = {
+  bgPrimary:   "#F5F0E8",
+  bgSecondary: "#EDE6D6",
+  bgDeep:      "#2C1F0E",
+  brown:       "#6B4226",
+  olive:       "#5C6B3A",
+  gold:        "#B8903A",
+  textMain:    "#1C1008",
+  textMuted:   "#7A6A55",
+  textLight:   "#F5F0E8",
+  border:      "#D4C4A8",
+};
+const OM_GF = "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500&display=swap');";
 
-  function ytUrl(exerciseName) {
-    return "https://www.youtube.com/results?search_query=" + encodeURIComponent(exerciseName + " tutorial técnica correcta");
+const ES_TO_EN = {
+  "sentadilla": "barbell squat",
+  "sentadilla con barra": "barbell squat",
+  "sentadilla frontal": "barbell front squat",
+  "prensa de piernas": "leg press",
+  "extensión de cuádriceps": "leg extension",
+  "curl de isquiotibiales": "lying leg curl",
+  "peso muerto rumano": "romanian deadlift",
+  "hip thrust": "barbell hip thrust",
+  "zancada": "dumbbell lunge",
+  "elevación de talones": "standing calf raise",
+  "abducción de cadera": "hip abduction",
+  "press de banca": "barbell bench press",
+  "press de banca inclinado": "incline barbell bench press",
+  "press de banca declinado": "decline barbell bench press",
+  "aperturas con mancuernas": "dumbbell fly",
+  "fondos en paralelas": "chest dip",
+  "press con mancuernas": "dumbbell bench press",
+  "pullover": "dumbbell pullover",
+  "dominadas": "pull-up",
+  "remo con barra": "barbell bent over row",
+  "remo con mancuerna": "dumbbell row",
+  "jalón al pecho": "cable pulldown",
+  "remo en polea": "seated cable row",
+  "peso muerto": "deadlift",
+  "hiperextensiones": "hyperextension",
+  "press militar": "barbell shoulder press",
+  "elevaciones laterales": "dumbbell lateral raise",
+  "elevaciones frontales": "dumbbell front raise",
+  "face pull": "face pull",
+  "pájaro": "dumbbell rear delt fly",
+  "curl con barra": "barbell curl",
+  "curl con mancuernas": "dumbbell bicep curl",
+  "curl martillo": "hammer curl",
+  "curl en polea": "cable curl",
+  "extensión de tríceps": "dumbbell tricep extension",
+  "press francés": "ezbar french press",
+  "jalón de tríceps en polea": "cable triceps pushdown",
+  "plancha": "plank",
+  "crunch": "crunch",
+  "crunch inverso": "reverse crunch",
+  "elevación de piernas": "hanging leg raise",
+  "rueda abdominal": "ab roller",
+  "russian twist": "russian twist",
+};
+
+let exerciseDBCache = null;
+
+async function fetchExerciseGif(exerciseNameEs) {
+  const normalized = exerciseNameEs.toLowerCase().trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  let englishName = null;
+  for (const [es, en] of Object.entries(ES_TO_EN)) {
+    const normalizedKey = es.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (normalized.includes(normalizedKey) || normalizedKey.includes(normalized)) {
+      englishName = en;
+      break;
+    }
   }
 
+  if (!englishName) return null;
+
+  try {
+    if (!exerciseDBCache) {
+      const response = await fetch("https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json");
+      exerciseDBCache = await response.json();
+    }
+
+    const match = exerciseDBCache.find(ex =>
+      ex.name.toLowerCase().includes(englishName.toLowerCase()) ||
+      englishName.toLowerCase().includes(ex.name.toLowerCase())
+    );
+
+    if (!match) return null;
+
+    return {
+      id: match.id,
+      name: match.name,
+      primaryMuscles: match.primaryMuscles,
+      secondaryMuscles: match.secondaryMuscles,
+      instructions: match.instructions,
+      img0: `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${match.id}/0.jpg`,
+      img1: `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${match.id}/1.jpg`,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+function ExerciseCard({ ex, index }) {
+  const [expanded, setExpanded] = useState(false);
+  const [tab, setTab] = useState("details");
+  const [tutorialData, setTutorialData] = useState(null);
+  const [tutorialLoading, setTutorialLoading] = useState(false);
+  const [tutorialLoaded, setTutorialLoaded] = useState(false);
+
+  async function handleTutorialTab() {
+    setTab("tutorial");
+    if (!tutorialLoaded) {
+      setTutorialLoading(true);
+      const data = await fetchExerciseGif(ex.name);
+      setTutorialData(data);
+      setTutorialLoading(false);
+      setTutorialLoaded(true);
+    }
+  }
+
+  const chipStyle = {
+    background: OM.bgSecondary,
+    border: "1px solid " + OM.border,
+    color: OM.brown,
+    borderRadius: 2,
+    padding: "3px 10px",
+    fontSize: 12,
+    fontWeight: 600,
+    letterSpacing: "0.5px",
+    textTransform: "uppercase",
+    fontFamily: "'Lora', serif",
+  };
+
+  const tabStyle = (active) => ({
+    background: "transparent",
+    border: "none",
+    borderBottom: active ? "2px solid " + OM.olive : "2px solid transparent",
+    color: active ? OM.olive : OM.textMuted,
+    fontWeight: active ? 600 : 400,
+    fontFamily: "'Lora', serif",
+    fontSize: 14,
+    padding: "8px 16px",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+  });
+
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text }}>
-      <style>{GF}</style>
-      <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 20px", height: 58, display: "flex", alignItems: "center", gap: 14 }}>
-        <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>← Inicio</button>
-        <span style={{ fontWeight: 700 }}>Rutina de hoy</span>
-        <Tag text={"Día " + workout.day_number} color={C.primary} />
-      </div>
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 20px" }}>
-        {/* Day header */}
-        <div style={{ background: "linear-gradient(135deg,#1a1a2e,#0f0f1a)", borderRadius: 18, padding: 22, border: "1px solid " + C.primary + "44", marginBottom: 20 }}>
-          <div style={{ color: C.primary, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Semana {workout.week} — Día {workout.day_number}</div>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 800, margin: "0 0 6px" }}>{workout.name}</h2>
-          <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>{workout.focus}</p>
-          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <Tag text={workout.exercises?.length + " ejercicios"} color={C.secondary} />
+    <div style={{
+      background: OM.bgPrimary,
+      border: "1px solid " + OM.border,
+      borderRadius: 4,
+      boxShadow: expanded ? "0 4px 16px rgba(44,31,14,0.18)" : "0 2px 8px rgba(44,31,14,0.12)",
+      marginBottom: 12,
+      overflow: "hidden",
+      transition: "box-shadow 0.2s ease",
+    }}>
+      {/* Header — always visible */}
+      <div
+        onClick={() => setExpanded(e => !e)}
+        style={{ padding: "20px 24px", cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 14 }}
+      >
+        <div style={{
+          width: 30, height: 30, borderRadius: 2,
+          background: OM.bgDeep, display: "flex", alignItems: "center",
+          justifyContent: "center", color: OM.gold, fontWeight: 700,
+          fontSize: 13, flexShrink: 0, fontFamily: "'Playfair Display', serif",
+        }}>
+          {index + 1}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 18, color: OM.textMain, fontWeight: 600, marginBottom: 8 }}>
+            {ex.name}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {ex.sets && <span style={chipStyle}>{ex.sets} series</span>}
+            {ex.reps && <span style={chipStyle}>{ex.reps} reps</span>}
+            {ex.rest && <span style={chipStyle}>{ex.rest}</span>}
           </div>
         </div>
+        <span style={{ color: OM.brown, fontSize: 14, marginLeft: 4, transition: "transform 0.2s ease", display: "inline-block", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", marginTop: 4 }}>▼</span>
+      </div>
 
-        {/* Exercise list */}
-        {workout.exercises?.map((ex, i) => (
-          <div key={i} style={{ background: C.card, borderRadius: 14, border: "1px solid " + C.border, marginBottom: 12, overflow: "hidden" }}>
-            <div onClick={() => setExpandedEx(expandedEx === i ? null : i)} style={{ padding: "16px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: C.primary + "22", display: "flex", alignItems: "center", justifyContent: "center", color: C.primary, fontWeight: 800, fontSize: 15, flexShrink: 0 }}>{i + 1}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>{ex.name}</div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{ex.muscles}</div>
+      {/* Expanded content */}
+      {expanded && (
+        <div style={{ borderTop: "1px solid " + OM.border }}>
+          {/* Tabs */}
+          <div style={{ display: "flex", borderBottom: "1px solid " + OM.border, background: OM.bgSecondary }}>
+            <button style={tabStyle(tab === "details")} onClick={() => setTab("details")}>📋 Detalles</button>
+            <button style={tabStyle(tab === "tutorial")} onClick={handleTutorialTab}>▶ Tutorial</button>
+          </div>
+
+          {/* Tab content */}
+          <div style={{ padding: "20px 24px" }}>
+            {tab === "details" && (
+              <div>
+                {ex.muscles && (
+                  <p style={{ fontFamily: "'Lora', serif", fontSize: 13, color: OM.textMuted, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
+                    {ex.muscles}
+                  </p>
+                )}
+                <hr style={{ border: "none", borderTop: "1px solid " + OM.border, margin: "0 0 14px" }} />
+                <p style={{ fontFamily: "'Lora', serif", fontSize: 15, lineHeight: 1.8, color: OM.textMain, margin: "0 0 16px" }}>
+                  {ex.instructions || "Sin instrucciones adicionales."}
+                </p>
+                {ex.load && (
+                  <div style={{ display: "inline-block", background: OM.bgSecondary, border: "1px solid " + OM.border, borderRadius: 2, padding: "4px 12px" }}>
+                    <span style={{ fontFamily: "'Lora', serif", fontSize: 12, color: OM.brown, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Carga: {ex.load}</span>
+                  </div>
+                )}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <Tag text={ex.sets + " × " + ex.reps} color={C.primary} />
-                <Tag text={ex.rest} color={C.secondary} />
-              </div>
-              <span style={{ color: C.muted, fontSize: 18, marginLeft: 4 }}>{expandedEx === i ? "▲" : "▼"}</span>
-            </div>
-            {expandedEx === i && (
-              <div style={{ padding: "0 18px 16px", borderTop: "1px solid " + C.border }}>
-                <div style={{ paddingTop: 14, display: "flex", gap: 10, marginBottom: 12 }}>
-                  {[["Series", ex.sets], ["Reps", ex.reps], ["Descanso", ex.rest], ["Carga", ex.load]].map(([l, v]) => (
-                    <div key={l} style={{ flex: 1, background: C.surface, borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: C.primary }}>{v}</div>
-                      <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", marginTop: 2 }}>{l}</div>
+            )}
+            {tab === "tutorial" && (
+              <div>
+                {tutorialLoading && (
+                  <p style={{ fontFamily: "'Lora', serif", fontSize: 14, color: OM.textMuted, margin: 0 }}>Cargando...</p>
+                )}
+                {!tutorialLoading && tutorialLoaded && !tutorialData && (
+                  <p style={{ fontFamily: "'Lora', serif", fontSize: 14, color: OM.textMuted, margin: 0, fontStyle: "italic" }}>Demostración no disponible</p>
+                )}
+                {!tutorialLoading && tutorialData && (
+                  <div>
+                    {/* Images side by side */}
+                    <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+                      <div style={{ flex: 1 }}>
+                        <img src={tutorialData.img0} alt="Posición inicial" style={{ width: "100%", objectFit: "cover", borderRadius: 3, border: "1px solid " + OM.border, display: "block" }} />
+                        <p style={{ fontFamily: "'Lora', serif", fontSize: 11, color: OM.textMuted, textAlign: "center", margin: "4px 0 0" }}>Inicio</p>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <img src={tutorialData.img1} alt="Posición final" style={{ width: "100%", objectFit: "cover", borderRadius: 3, border: "1px solid " + OM.border, display: "block" }} />
+                        <p style={{ fontFamily: "'Lora', serif", fontSize: 11, color: OM.textMuted, textAlign: "center", margin: "4px 0 0" }}>Final</p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-                <div style={{ background: C.secondary + "22", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.secondary, marginBottom: 12 }}>
-                  💡 {ex.instructions}
-                </div>
-                <a href={ytUrl(ex.name)} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#ff000022", border: "1px solid #ff000066", borderRadius: 10, padding: "10px 14px", color: "#ff4444", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
-                  ▶ Ver tutorial en YouTube
-                </a>
+                    {/* Primary muscle */}
+                    {tutorialData.primaryMuscles?.length > 0 && (
+                      <p style={{ fontFamily: "'Lora', serif", fontSize: 13, margin: "0 0 14px" }}>
+                        <span style={{ color: OM.brown, fontWeight: 700 }}>Músculo principal: </span>
+                        <span style={{ color: OM.textMain }}>{tutorialData.primaryMuscles.join(", ")}</span>
+                      </p>
+                    )}
+                    {/* Instructions from DB */}
+                    {tutorialData.instructions?.length > 0 && (
+                      <ol style={{ fontFamily: "'Lora', serif", fontSize: 14, lineHeight: 1.8, color: OM.textMain, margin: 0, paddingLeft: 20 }}>
+                        {tutorialData.instructions.map((step, idx) => (
+                          <li key={idx} style={{ marginBottom: 6 }}>{step}</li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkoutScreen({ workout, onBack }) {
+  return (
+    <div style={{ minHeight: "100vh", background: OM.bgSecondary, fontFamily: "'Lora', serif", color: OM.textMain, padding: "0 0 40px" }}>
+      <style>{GF + "\n" + OM_GF}</style>
+      {/* Top nav */}
+      <div style={{ background: OM.bgDeep, padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 14 }}>
+        <button onClick={onBack} style={{ background: "transparent", border: "none", color: OM.gold, cursor: "pointer", fontSize: 13, fontFamily: "'Lora', serif", letterSpacing: "0.5px" }}>← Inicio</button>
+        <span style={{ color: OM.textLight, fontFamily: "'Playfair Display', serif", fontWeight: 600, fontSize: 16 }}>Rutina de hoy</span>
+      </div>
+
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
+        {/* Day header */}
+        <div style={{ background: OM.bgDeep, borderRadius: 4, padding: "22px 24px", marginBottom: 20, boxShadow: "0 2px 8px rgba(44,31,14,0.18)" }}>
+          <div style={{ color: OM.gold, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8, fontFamily: "'Lora', serif" }}>
+            Semana {workout.week} — Día {workout.day_number}
+          </div>
+          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 24, fontWeight: 700, margin: "0 0 6px", color: OM.textLight }}>{workout.name}</h2>
+          <p style={{ color: OM.textMuted, fontSize: 14, margin: "0 0 12px", fontFamily: "'Lora', serif" }}>{workout.focus}</p>
+          <hr style={{ border: "none", borderTop: "1px solid " + OM.brown + "55", margin: "12px 0" }} />
+          <span style={{ fontSize: 12, color: OM.textMuted, fontFamily: "'Lora', serif", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            {workout.exercises?.length} ejercicios
+          </span>
+        </div>
+
+        {/* Exercise cards */}
+        {workout.exercises?.map((ex, i) => (
+          <ExerciseCard key={i} ex={ex} index={i} />
         ))}
       </div>
     </div>
