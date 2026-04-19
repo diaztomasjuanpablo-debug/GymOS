@@ -1468,6 +1468,9 @@ async function fetchExerciseGif(exerciseNameEs) {
 
     const exercises = exerciseDBCache;
 
+    const pushups = exercises.filter(ex => ex.name.toLowerCase().includes('push'));
+    console.log('DEBUG pushups disponibles:', pushups.map(ex => ex.name));
+
     function wordOverlap(a, b) {
       const wordsA = a.toLowerCase().split(/\s+/);
       const wordsB = b.toLowerCase().split(/\s+/);
