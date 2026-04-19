@@ -1550,6 +1550,7 @@ function ExerciseCard({ ex, index }) {
   const [tutorialData, setTutorialData] = useState(null);
   const [tutorialLoading, setTutorialLoading] = useState(false);
   const [tutorialLoaded, setTutorialLoaded] = useState(false);
+  const [img1Failed, setImg1Failed] = useState(false);
 
   async function handleTutorialTab() {
     setTab("tutorial");
@@ -1669,14 +1670,18 @@ function ExerciseCard({ ex, index }) {
                   <div>
                     {/* Images side by side */}
                     <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
-                      <div style={{ flex: 1 }}>
-                        <img src={tutorialData.img0} alt="Posición inicial" style={{ width: "100%", objectFit: "cover", borderRadius: 3, border: "1px solid " + OM.border, display: "block" }} />
-                        <p style={{ fontFamily: "'Lora', serif", fontSize: 11, color: OM.textMuted, textAlign: "center", margin: "4px 0 0" }}>Inicio</p>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <img src={tutorialData.img1} alt="Posición final" style={{ width: "100%", objectFit: "cover", borderRadius: 3, border: "1px solid " + OM.border, display: "block" }} />
-                        <p style={{ fontFamily: "'Lora', serif", fontSize: 11, color: OM.textMuted, textAlign: "center", margin: "4px 0 0" }}>Final</p>
-                      </div>
+                      {tutorialData.img0 && (
+                        <div style={{ flex: 1, width: img1Failed ? "100%" : "48%" }}>
+                          <img src={tutorialData.img0} alt="Posición inicial" style={{ width: "100%", objectFit: "cover", borderRadius: 3, border: "1px solid " + OM.border, display: "block" }} />
+                          <p style={{ fontFamily: "'Lora', serif", fontSize: 11, color: OM.textMuted, textAlign: "center", margin: "4px 0 0" }}>Inicio</p>
+                        </div>
+                      )}
+                      {tutorialData.img1 && !img1Failed && (
+                        <div style={{ flex: 1 }}>
+                          <img src={tutorialData.img1} alt="Posición final" onError={() => setImg1Failed(true)} style={{ width: "100%", objectFit: "cover", borderRadius: 3, border: "1px solid " + OM.border, display: "block" }} />
+                          <p style={{ fontFamily: "'Lora', serif", fontSize: 11, color: OM.textMuted, textAlign: "center", margin: "4px 0 0" }}>Final</p>
+                        </div>
+                      )}
                     </div>
                     {/* Primary muscle */}
                     {tutorialData.primaryMuscles?.length > 0 && (
