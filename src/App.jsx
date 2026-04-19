@@ -1380,6 +1380,30 @@ const ES_TO_EN = {
 
 let exerciseDBCache = null;
 
+async function translateInstructions(instructionsArray) {
+  if (!instructionsArray || instructionsArray.length === 0) return [];
+
+  try {
+    const response = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [{
+          role: "user",
+          content: `Traducí estas instrucciones de ejercicio al español argentino, de forma clara y directa. Devolvé SOLO un array JSON con las instrucciones traducidas, sin texto adicional ni markdown:\n\n${JSON.stringify(instructionsArray)}`
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content[0].text.trim();
+    const clean = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch (e) {
+    return instructionsArray;
+  }
+}
+
 async function fetchExerciseGif(exerciseNameEs) {
   const normalized = exerciseNameEs.toLowerCase().trim()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -1434,6 +1458,10 @@ function ExerciseCard({ ex, index }) {
     if (!tutorialLoaded) {
       setTutorialLoading(true);
       const data = await fetchExerciseGif(ex.name);
+      if (data && data.instructions && data.instructions.length > 0) {
+        const translated = await translateInstructions(data.instructions);
+        data.instructions = translated;
+      }
       setTutorialData(data);
       setTutorialLoading(false);
       setTutorialLoaded(true);
