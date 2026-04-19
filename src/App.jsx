@@ -1388,6 +1388,8 @@ async function translateInstructions(instructionsArray) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
         messages: [{
           role: "user",
           content: `Traducí estas instrucciones de ejercicio al español argentino, de forma clara y directa. Devolvé SOLO un array JSON con las instrucciones traducidas, sin texto adicional ni markdown:\n\n${JSON.stringify(instructionsArray)}`
@@ -1396,10 +1398,12 @@ async function translateInstructions(instructionsArray) {
     });
 
     const data = await response.json();
+    console.log("DEBUG traduccion raw:", data);
     const text = data.content[0].text.trim();
     const clean = text.replace(/```json|```/g, "").trim();
     return JSON.parse(clean);
   } catch (e) {
+    console.log("ERROR traduccion:", e);
     return instructionsArray;
   }
 }
@@ -1416,6 +1420,8 @@ async function fetchExerciseGif(exerciseNameEs) {
       break;
     }
   }
+
+  console.log("DEBUG ejercicio:", { original: exerciseNameEs, normalized, englishName });
 
   if (!englishName) return null;
 
