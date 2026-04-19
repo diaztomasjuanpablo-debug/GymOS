@@ -1403,7 +1403,9 @@ async function translateExerciseNameToEnglish(spanishName) {
       })
     });
     const data = await response.json();
-    return data.content[0].text.trim().toLowerCase();
+    const resultado = data.content[0].text.trim().toLowerCase();
+    console.log("DEBUG traduccion IA:", { original: spanishName, traducido: resultado });
+    return resultado;
   } catch (e) {
     return null;
   }
@@ -1484,6 +1486,36 @@ async function fetchExerciseGif(exerciseNameEs) {
     return null;
   }
 }
+
+const MUSCLE_TRANSLATIONS = {
+  "hamstrings": "isquiotibiales",
+  "quadriceps": "cuádriceps",
+  "glutes": "glúteos",
+  "calves": "pantorrillas",
+  "abductors": "abductores",
+  "adductors": "aductores",
+  "chest": "pecho",
+  "pectorals": "pectorales",
+  "lats": "dorsales",
+  "upper back": "espalda alta",
+  "lower back": "zona lumbar",
+  "middle back": "espalda media",
+  "traps": "trapecios",
+  "shoulders": "hombros",
+  "delts": "deltoides",
+  "biceps": "bíceps",
+  "triceps": "tríceps",
+  "forearms": "antebrazos",
+  "abs": "abdominales",
+  "core": "core",
+  "neck": "cuello",
+  "spine": "columna",
+  "serratus anterior": "serrato anterior",
+  "rhomboids": "romboides",
+  "hip flexors": "flexores de cadera",
+  "obliques": "oblicuos",
+  "cardiovascular system": "sistema cardiovascular",
+};
 
 function ExerciseCard({ ex, index }) {
   const [expanded, setExpanded] = useState(false);
@@ -1623,7 +1655,7 @@ function ExerciseCard({ ex, index }) {
                     {tutorialData.primaryMuscles?.length > 0 && (
                       <p style={{ fontFamily: "'Lora', serif", fontSize: 13, margin: "0 0 14px" }}>
                         <span style={{ color: OM.brown, fontWeight: 700 }}>Músculo principal: </span>
-                        <span style={{ color: OM.textMain }}>{tutorialData.primaryMuscles.join(", ")}</span>
+                        <span style={{ color: OM.textMain }}>{MUSCLE_TRANSLATIONS[tutorialData.primaryMuscles[0]?.toLowerCase()] || tutorialData.primaryMuscles[0]}</span>
                       </p>
                     )}
                     {/* Instructions from DB */}
