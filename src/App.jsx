@@ -1318,20 +1318,6 @@ function QRCheckin({ user, profile, gym, plan, onCheckin, onBack }) {
 }
 
 // ── WORKOUT SCREEN ────────────────────────────────────────────────
-const OM = {
-  bgPrimary:   "#F5F0E8",
-  bgSecondary: "#EDE6D6",
-  bgDeep:      "#2C1F0E",
-  brown:       "#6B4226",
-  olive:       "#5C6B3A",
-  gold:        "#B8903A",
-  textMain:    "#1C1008",
-  textMuted:   "#7A6A55",
-  textLight:   "#F5F0E8",
-  border:      "#D4C4A8",
-};
-const OM_GF = "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500&display=swap');";
-
 const ES_TO_EN = {
   "sentadilla": "barbell squat",
   "sentadilla con barra": "barbell squat",
@@ -1568,25 +1554,23 @@ function ExerciseCard({ ex, index }) {
   }
 
   const chipStyle = {
-    background: OM.bgSecondary,
-    border: "1px solid " + OM.border,
-    color: OM.brown,
-    borderRadius: 2,
+    background: C.surface,
+    border: "1px solid " + C.border,
+    color: C.accent,
+    borderRadius: 20,
     padding: "3px 10px",
     fontSize: 12,
     fontWeight: 600,
     letterSpacing: "0.5px",
     textTransform: "uppercase",
-    fontFamily: "'Lora', serif",
   };
 
   const tabStyle = (active) => ({
     background: "transparent",
     border: "none",
-    borderBottom: active ? "2px solid " + OM.olive : "2px solid transparent",
-    color: active ? OM.olive : OM.textMuted,
+    borderBottom: active ? "2px solid " + C.primary : "2px solid transparent",
+    color: active ? C.primary : C.muted,
     fontWeight: active ? 600 : 400,
-    fontFamily: "'Lora', serif",
     fontSize: 14,
     padding: "8px 16px",
     cursor: "pointer",
@@ -1595,10 +1579,10 @@ function ExerciseCard({ ex, index }) {
 
   return (
     <div style={{
-      background: OM.bgPrimary,
-      border: "1px solid " + OM.border,
-      borderRadius: 4,
-      boxShadow: expanded ? "0 4px 16px rgba(44,31,14,0.18)" : "0 2px 8px rgba(44,31,14,0.12)",
+      background: C.card,
+      border: "1px solid " + C.border,
+      borderRadius: 16,
+      boxShadow: expanded ? "0 4px 16px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.2)",
       marginBottom: 12,
       overflow: "hidden",
       transition: "box-shadow 0.2s ease",
@@ -1609,15 +1593,15 @@ function ExerciseCard({ ex, index }) {
         style={{ padding: "20px 24px", cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 14 }}
       >
         <div style={{
-          width: 30, height: 30, borderRadius: 2,
-          background: OM.bgDeep, display: "flex", alignItems: "center",
-          justifyContent: "center", color: OM.gold, fontWeight: 700,
-          fontSize: 13, flexShrink: 0, fontFamily: "'Playfair Display', serif",
+          width: 30, height: 30, borderRadius: 8,
+          background: C.surface, display: "flex", alignItems: "center",
+          justifyContent: "center", color: C.primary, fontWeight: 700,
+          fontSize: 13, flexShrink: 0,
         }}>
           {index + 1}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 18, color: OM.textMain, fontWeight: 600, marginBottom: 8 }}>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 18, color: C.text, fontWeight: 600, marginBottom: 8 }}>
             {ex.name}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -1626,14 +1610,14 @@ function ExerciseCard({ ex, index }) {
             {ex.rest && <span style={chipStyle}>{ex.rest}</span>}
           </div>
         </div>
-        <span style={{ color: OM.brown, fontSize: 14, marginLeft: 4, transition: "transform 0.2s ease", display: "inline-block", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", marginTop: 4 }}>▼</span>
+        <span style={{ color: C.muted, fontSize: 14, marginLeft: 4, transition: "transform 0.2s ease", display: "inline-block", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", marginTop: 4 }}>▼</span>
       </div>
 
       {/* Expanded content */}
       {expanded && (
-        <div style={{ borderTop: "1px solid " + OM.border }}>
+        <div style={{ borderTop: "1px solid " + C.border }}>
           {/* Tabs */}
-          <div style={{ display: "flex", borderBottom: "1px solid " + OM.border, background: OM.bgSecondary }}>
+          <div style={{ display: "flex", borderBottom: "1px solid " + C.border, background: C.surface }}>
             <button style={tabStyle(tab === "details")} onClick={() => setTab("details")}>📋 Detalles</button>
             <button style={tabStyle(tab === "tutorial")} onClick={handleTutorialTab}>▶ Tutorial</button>
           </div>
@@ -1643,17 +1627,17 @@ function ExerciseCard({ ex, index }) {
             {tab === "details" && (
               <div>
                 {ex.muscles && (
-                  <p style={{ fontFamily: "'Lora', serif", fontSize: 13, color: OM.textMuted, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
+                  <p style={{ fontSize: 13, color: C.muted, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
                     {ex.muscles}
                   </p>
                 )}
-                <hr style={{ border: "none", borderTop: "1px solid " + OM.border, margin: "0 0 14px" }} />
-                <p style={{ fontFamily: "'Lora', serif", fontSize: 15, lineHeight: 1.8, color: OM.textMain, margin: "0 0 16px" }}>
+                <hr style={{ border: "none", borderTop: "1px solid " + C.border, margin: "0 0 14px" }} />
+                <p style={{ fontSize: 15, lineHeight: 1.8, color: C.text, margin: "0 0 16px" }}>
                   {ex.instructions || "Sin instrucciones adicionales."}
                 </p>
                 {ex.load && (
-                  <div style={{ display: "inline-block", background: OM.bgSecondary, border: "1px solid " + OM.border, borderRadius: 2, padding: "4px 12px" }}>
-                    <span style={{ fontFamily: "'Lora', serif", fontSize: 12, color: OM.brown, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Carga: {ex.load}</span>
+                  <div style={{ display: "inline-block", background: C.surface, border: "1px solid " + C.border, borderRadius: 8, padding: "4px 12px" }}>
+                    <span style={{ fontSize: 12, color: C.accent, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Carga: {ex.load}</span>
                   </div>
                 )}
               </div>
@@ -1661,10 +1645,10 @@ function ExerciseCard({ ex, index }) {
             {tab === "tutorial" && (
               <div>
                 {tutorialLoading && (
-                  <p style={{ fontFamily: "'Lora', serif", fontSize: 14, color: OM.textMuted, margin: 0 }}>Cargando...</p>
+                  <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>Cargando...</p>
                 )}
                 {!tutorialLoading && tutorialLoaded && !tutorialData && (
-                  <p style={{ fontFamily: "'Lora', serif", fontSize: 14, color: OM.textMuted, margin: 0, fontStyle: "italic" }}>Demostración no disponible</p>
+                  <p style={{ fontSize: 14, color: C.muted, margin: 0, fontStyle: "italic" }}>Demostración no disponible</p>
                 )}
                 {!tutorialLoading && tutorialData && (
                   <div>
@@ -1672,27 +1656,27 @@ function ExerciseCard({ ex, index }) {
                     <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
                       {tutorialData.img0 && (
                         <div style={{ flex: 1, width: img1Failed ? "100%" : "48%" }}>
-                          <img src={tutorialData.img0} alt="Posición inicial" style={{ width: "100%", objectFit: "cover", borderRadius: 3, border: "1px solid " + OM.border, display: "block" }} />
-                          <p style={{ fontFamily: "'Lora', serif", fontSize: 11, color: OM.textMuted, textAlign: "center", margin: "4px 0 0" }}>Inicio</p>
+                          <img src={tutorialData.img0} alt="Posición inicial" style={{ width: "100%", objectFit: "cover", borderRadius: 8, border: "1px solid " + C.border, display: "block" }} />
+                          <p style={{ fontSize: 11, color: C.muted, textAlign: "center", margin: "4px 0 0" }}>Inicio</p>
                         </div>
                       )}
                       {tutorialData.img1 && !img1Failed && (
                         <div style={{ flex: 1 }}>
-                          <img src={tutorialData.img1} alt="Posición final" onError={() => setImg1Failed(true)} style={{ width: "100%", objectFit: "cover", borderRadius: 3, border: "1px solid " + OM.border, display: "block" }} />
-                          <p style={{ fontFamily: "'Lora', serif", fontSize: 11, color: OM.textMuted, textAlign: "center", margin: "4px 0 0" }}>Final</p>
+                          <img src={tutorialData.img1} alt="Posición final" onError={() => setImg1Failed(true)} style={{ width: "100%", objectFit: "cover", borderRadius: 8, border: "1px solid " + C.border, display: "block" }} />
+                          <p style={{ fontSize: 11, color: C.muted, textAlign: "center", margin: "4px 0 0" }}>Final</p>
                         </div>
                       )}
                     </div>
                     {/* Primary muscle */}
                     {tutorialData.primaryMuscles?.length > 0 && (
-                      <p style={{ fontFamily: "'Lora', serif", fontSize: 13, margin: "0 0 14px" }}>
-                        <span style={{ color: OM.brown, fontWeight: 700 }}>Músculo principal: </span>
-                        <span style={{ color: OM.textMain }}>{MUSCLE_TRANSLATIONS[tutorialData.primaryMuscles[0]?.toLowerCase()] || tutorialData.primaryMuscles[0]}</span>
+                      <p style={{ fontSize: 13, margin: "0 0 14px" }}>
+                        <span style={{ color: C.accent, fontWeight: 700 }}>Músculo principal: </span>
+                        <span style={{ color: C.text }}>{MUSCLE_TRANSLATIONS[tutorialData.primaryMuscles[0]?.toLowerCase()] || tutorialData.primaryMuscles[0]}</span>
                       </p>
                     )}
                     {/* Instructions from DB */}
                     {tutorialData.instructions?.length > 0 && (
-                      <ol style={{ fontFamily: "'Lora', serif", fontSize: 14, lineHeight: 1.8, color: OM.textMain, margin: 0, paddingLeft: 20 }}>
+                      <ol style={{ fontSize: 14, lineHeight: 1.8, color: C.text, margin: 0, paddingLeft: 20 }}>
                         {tutorialData.instructions.map((step, idx) => (
                           <li key={idx} style={{ marginBottom: 6 }}>{step}</li>
                         ))}
@@ -1711,24 +1695,24 @@ function ExerciseCard({ ex, index }) {
 
 function WorkoutScreen({ workout, onBack }) {
   return (
-    <div style={{ minHeight: "100vh", background: OM.bgSecondary, fontFamily: "'Lora', serif", color: OM.textMain, padding: "0 0 40px" }}>
-      <style>{GF + "\n" + OM_GF}</style>
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, padding: "0 0 40px" }}>
+      <style>{GF}</style>
       {/* Top nav */}
-      <div style={{ background: OM.bgDeep, padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 14 }}>
-        <button onClick={onBack} style={{ background: "transparent", border: "none", color: OM.gold, cursor: "pointer", fontSize: 13, fontFamily: "'Lora', serif", letterSpacing: "0.5px" }}>← Inicio</button>
-        <span style={{ color: OM.textLight, fontFamily: "'Playfair Display', serif", fontWeight: 600, fontSize: 16 }}>Rutina de hoy</span>
+      <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 14 }}>
+        <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, letterSpacing: "0.5px" }}>← Inicio</button>
+        <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 16 }}>Rutina de hoy</span>
       </div>
 
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
         {/* Day header */}
-        <div style={{ background: OM.bgDeep, borderRadius: 4, padding: "22px 24px", marginBottom: 20, boxShadow: "0 2px 8px rgba(44,31,14,0.18)" }}>
-          <div style={{ color: OM.gold, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8, fontFamily: "'Lora', serif" }}>
+        <div style={{ background: C.surface, border: "1px solid " + C.border, borderRadius: 16, padding: "22px 24px", marginBottom: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+          <div style={{ color: C.primary, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>
             Semana {workout.week} — Día {workout.day_number}
           </div>
-          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 24, fontWeight: 700, margin: "0 0 6px", color: OM.textLight }}>{workout.name}</h2>
-          <p style={{ color: OM.textMuted, fontSize: 14, margin: "0 0 12px", fontFamily: "'Lora', serif" }}>{workout.focus}</p>
-          <hr style={{ border: "none", borderTop: "1px solid " + OM.brown + "55", margin: "12px 0" }} />
-          <span style={{ fontSize: 12, color: OM.textMuted, fontFamily: "'Lora', serif", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          <h2 style={{ fontFamily: "'Sora', sans-serif", fontSize: 24, fontWeight: 700, margin: "0 0 6px", color: C.text }}>{workout.name}</h2>
+          <p style={{ color: C.muted, fontSize: 14, margin: "0 0 12px" }}>{workout.focus}</p>
+          <hr style={{ border: "none", borderTop: "1px solid " + C.border, margin: "12px 0" }} />
+          <span style={{ fontSize: 12, color: C.muted, textTransform: "uppercase", letterSpacing: "0.5px" }}>
             {workout.exercises?.length} ejercicios
           </span>
         </div>
