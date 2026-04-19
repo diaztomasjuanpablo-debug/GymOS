@@ -1380,7 +1380,7 @@ const ES_TO_EN = {
   "remo inclinado": "incline dumbbell row",
   "puente gluteo con mancuerna": "barbell hip thrust",
   "puente gluteo": "barbell hip thrust",
-  "flexiones diamante": "diamond push-up",
+  "flexiones diamante": "push-ups close triceps position",
   "flexiones": "push-up",
   "superman con brazos extendidos": "superman",
   "superman": "superman",
@@ -1468,10 +1468,7 @@ async function fetchExerciseGif(exerciseNameEs) {
 
     const exercises = exerciseDBCache;
 
-    const pushups = exercises.filter(ex => ex.name.toLowerCase().includes('push'));
-    console.log('DEBUG pushups disponibles:', pushups.map(ex => ex.name));
-
-    function wordOverlap(a, b) {
+function wordOverlap(a, b) {
       const wordsA = a.toLowerCase().split(/\s+/);
       const wordsB = b.toLowerCase().split(/\s+/);
       return wordsA.filter(w => w.length > 2 && wordsB.includes(w)).length;
