@@ -1466,10 +1466,37 @@ async function fetchExerciseGif(exerciseNameEs) {
       exerciseDBCache = await response.json();
     }
 
-    const match = exerciseDBCache.find(ex =>
-      ex.name.toLowerCase().includes(englishName.toLowerCase()) ||
-      englishName.toLowerCase().includes(ex.name.toLowerCase())
+    const exercises = exerciseDBCache;
+
+    function wordOverlap(a, b) {
+      const wordsA = a.toLowerCase().split(/\s+/);
+      const wordsB = b.toLowerCase().split(/\s+/);
+      return wordsA.filter(w => w.length > 2 && wordsB.includes(w)).length;
+    }
+
+    let match = exercises.find(ex =>
+      ex.name.toLowerCase() === englishName.toLowerCase()
     );
+
+    if (!match) {
+      match = exercises.find(ex =>
+        ex.name.toLowerCase().includes(englishName.toLowerCase()) ||
+        englishName.toLowerCase().includes(ex.name.toLowerCase())
+      );
+    }
+
+    if (!match) {
+      let bestScore = 0;
+      let bestMatch = null;
+      for (const ex of exercises) {
+        const score = wordOverlap(ex.name, englishName);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = ex;
+        }
+      }
+      if (bestScore >= 2) match = bestMatch;
+    }
 
     if (!match) return null;
 
