@@ -1376,6 +1376,14 @@ const ES_TO_EN = {
   "elevación de piernas": "hanging leg raise",
   "rueda abdominal": "ab roller",
   "russian twist": "russian twist",
+  "remo inclinado con mancuernas": "incline dumbbell row",
+  "remo inclinado": "incline dumbbell row",
+  "puente gluteo con mancuerna": "barbell hip thrust",
+  "puente gluteo": "barbell hip thrust",
+  "flexiones diamante": "diamond push-up",
+  "flexiones": "push-up",
+  "superman con brazos extendidos": "superman",
+  "superman": "superman",
 };
 
 let exerciseDBCache = null;
