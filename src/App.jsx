@@ -1388,6 +1388,27 @@ const ES_TO_EN = {
 
 let exerciseDBCache = null;
 
+async function translateExerciseNameToEnglish(spanishName) {
+  try {
+    const response = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 50,
+        messages: [{
+          role: "user",
+          content: `Traducí este ejercicio de gimnasio al inglés para buscar en una base de datos de ejercicios. Devolvé SOLO el nombre en inglés, sin explicación, sin puntos, sin mayúsculas. Ejercicio: "${spanishName}"`
+        }]
+      })
+    });
+    const data = await response.json();
+    return data.content[0].text.trim().toLowerCase();
+  } catch (e) {
+    return null;
+  }
+}
+
 async function translateInstructions(instructionsArray) {
   if (!instructionsArray || instructionsArray.length === 0) return [];
 
@@ -1427,6 +1448,10 @@ async function fetchExerciseGif(exerciseNameEs) {
       englishName = en;
       break;
     }
+  }
+
+  if (!englishName) {
+    englishName = await translateExerciseNameToEnglish(exerciseNameEs);
   }
 
   console.log("DEBUG ejercicio:", { original: exerciseNameEs, normalized, englishName });
