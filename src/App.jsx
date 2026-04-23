@@ -20,7 +20,7 @@ const today = () => new Date().toISOString().split("T")[0];
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 const daysUntil = (dateStr) => Math.ceil((new Date(dateStr) - new Date()) / 86400000);
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const GF = "@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@700;800&display=swap');";
+const GF = "@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');";
 
 // Machine categories
 const MACHINE_CATEGORIES = ["Tren inferior","Tren superior empuje","Tren superior tirón","Core","Cardio","Peso libre","Funcional","Otro"];
@@ -99,32 +99,77 @@ Responde SOLO con JSON válido sin markdown:
 
 // ── Shared styles ─────────────────────────────────────────────────
 const C = {
-  bg: "#0a0a0f", surface: "#12121a", card: "#1a1a2e",
-  primary: "#00ff87", secondary: "#6366f1", accent: "#f59e0b",
-  danger: "#ef4444", text: "#ffffff", muted: "#64748b",
-  border: "#1e293b",
+  bg: "#070a12", surface: "#0d1220", card: "#111831",
+  primary: "#22e4c7", secondary: "#7c8dff", accent: "#ffb347",
+  danger: "#ff6b8a", text: "#eaf0ff", muted: "#6c7aa0",
+  border: "#1a2238", borderStrong: "#283352",
+  pos: "#22e4a0", neg: "#ff6b8a", warn: "#ffb347",
+  mono: "'JetBrains Mono', ui-monospace, monospace",
+  sans: "'Space Grotesk', system-ui, sans-serif",
 };
 
 const INP = {
-  width: "100%", background: "#0f0f1a", border: "1px solid #1e293b",
+  width: "100%", background: "#0d1220", border: "1px solid #1a2238",
   borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none",
-  color: "#fff", boxSizing: "border-box", fontFamily: "inherit",
+  color: "#eaf0ff", boxSizing: "border-box", fontFamily: "inherit",
 };
 
 const BTN = (variant = "primary") => ({
   background: variant === "primary" ? C.primary : variant === "danger" ? C.danger : "transparent",
-  color: variant === "primary" ? "#000" : "#fff",
-  border: variant === "ghost" ? "1px solid #1e293b" : "none",
-  borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700,
-  cursor: "pointer", fontFamily: "inherit",
+  color: variant === "primary" ? "#000" : C.text,
+  border: variant === "ghost" ? "1px solid " + C.borderStrong : "none",
+  borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600,
+  cursor: "pointer", fontFamily: "inherit", letterSpacing: "-0.01em",
 });
 
-function Tag({ text, color = "#6366f1", bg }) {
-  return <span style={{ background: bg || color + "22", color, fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "3px 10px", whiteSpace: "nowrap" }}>{text}</span>;
+function Tag({ text, color = "#7c8dff", bg }) {
+  return <span style={{ background: bg || color + "18", color, fontSize: 10, fontWeight: 500, borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap", border: "1px solid " + color + "33", fontFamily: C.mono, letterSpacing: "0.1em", textTransform: "uppercase" }}>{text}</span>;
 }
 
-function Card({ children, style = {} }) {
-  return <div style={{ background: C.card, borderRadius: 16, border: "1px solid " + C.border, padding: 20, ...style }}>{children}</div>;
+function Card({ children, style = {}, glow }) {
+  return <div style={{ background: C.card, borderRadius: 14, border: "1px solid " + C.border, padding: 20, boxShadow: glow ? `0 0 0 1px ${C.primary}22, 0 20px 40px -20px ${C.primary}22` : "none", ...style }}>{children}</div>;
+}
+
+function Eyebrow({ children, color = C.muted, style = {} }) {
+  return <div style={{ fontFamily: C.mono, fontSize: 10, color, letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 500, ...style }}>{children}</div>;
+}
+
+function Sparkline({ data, w = 120, h = 28, color = "currentColor", fill = null, strokeWidth = 1.5 }) {
+  if (!data || !data.length) return null;
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const pts = data.map((v, i) => [(i / (data.length - 1)) * w, h - ((v - min) / range) * h]);
+  const d = pts.map((p, i) => (i === 0 ? "M" : "L") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  return (
+    <svg width={w} height={h} style={{ display: "block", overflow: "visible" }}>
+      {fill && <path d={d + ` L ${w} ${h} L 0 ${h} Z`} fill={fill} />}
+      <path d={d} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Ring({ value = 0.7, size = 80, strokeWidth = 6, color = "currentColor", track = C.border, children }) {
+  const r = (size - strokeWidth) / 2, circ = 2 * Math.PI * r;
+  return (
+    <div style={{ position: "relative", width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={track} strokeWidth={strokeWidth}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={strokeWidth}
+          strokeDasharray={circ} strokeDashoffset={circ * (1 - value)} strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}/>
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>{children}</div>
+    </div>
+  );
+}
+
+function Bars({ data, w = 140, h = 36, color = "currentColor", gap = 2, radius = 1 }) {
+  if (!data || !data.length) return null;
+  const max = Math.max(...data) || 1, bw = (w - gap * (data.length - 1)) / data.length;
+  return (
+    <svg width={w} height={h} style={{ display: "block" }}>
+      {data.map((v, i) => { const bh = (v / max) * h; return <rect key={i} x={i * (bw + gap)} y={h - bh} width={bw} height={bh} fill={color} rx={radius}/>; })}
+    </svg>
+  );
 }
 
 function Fld({ label, hint, children }) {
@@ -214,13 +259,13 @@ function AuthScreen({ onAuth }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk',sans-serif" }}>
       <style>{GF}</style>
       <div style={{ width: "100%", maxWidth: 420, padding: "0 20px" }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 42, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>
-            Gym<span style={{ color: C.primary }}>OS</span>
+          <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 42, fontWeight: 700, color: C.text, margin: "0 0 6px", letterSpacing: "-0.03em" }}>
+            <span style={{ color: C.primary }}>◆</span> GymOS
           </h1>
           <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>El sistema operativo de tu gimnasio</p>
         </div>
@@ -228,15 +273,15 @@ function AuthScreen({ onAuth }) {
         {/* Gym banner when coming from invite link */}
         {gymFromUrl && (
           <div style={{ background: C.primary + "18", border: "1px solid " + C.primary + "55", borderRadius: 14, padding: "14px 18px", marginBottom: 20, textAlign: "center" }}>
-            <div style={{ fontSize: 28, marginBottom: 6 }}>🏋️</div>
-            <div style={{ fontWeight: 800, fontSize: 18, color: C.primary, fontFamily: "'Sora',sans-serif" }}>{gymFromUrl.name}</div>
+            <div style={{ fontSize: 24, marginBottom: 6, color: C.primary }}>◆</div>
+            <div style={{ fontWeight: 700, fontSize: 18, color: C.primary, fontFamily: "'Space Grotesk',sans-serif", letterSpacing: "-0.02em" }}>{gymFromUrl.name}</div>
             <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Creá tu cuenta para unirte a este gimnasio</div>
           </div>
         )}
 
         <Card>
           {/* Mode toggle */}
-          <div style={{ display: "flex", background: "#0f0f1a", borderRadius: 10, padding: 4, marginBottom: 24 }}>
+          <div style={{ display: "flex", background: C.surface, borderRadius: 10, padding: 4, marginBottom: 24 }}>
             {[["login","Iniciar sesión"],["register","Registrarse"]].map(([m, l]) => (
               <button key={m} onClick={() => setMode(m)} style={{ flex: 1, padding: "9px", borderRadius: 8, border: "none", background: mode === m ? C.secondary : "transparent", color: mode === m ? "#fff" : C.muted, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{l}</button>
             ))}
@@ -249,7 +294,7 @@ function AuthScreen({ onAuth }) {
                 {!urlInviteCode && (
                   <Fld label="Soy...">
                     <div style={{ display: "flex", gap: 10 }}>
-                      {[["trainer","🏋️ Entrenador / Dueño"],["client","💪 Cliente del gym"]].map(([r,l]) => (
+                      {[["trainer","Entrenador / Dueño"],["client","Cliente del gym"]].map(([r,l]) => (
                         <button key={r} onClick={() => setRole(r)} style={{ flex: 1, padding: 10, borderRadius: 10, border: "2px solid " + (role === r ? C.primary : C.border), background: role === r ? C.primary + "22" : "transparent", color: role === r ? C.primary : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{l}</button>
                       ))}
                     </div>
@@ -279,7 +324,7 @@ function AuthScreen({ onAuth }) {
             <Fld label="Contraseña *">
               <input style={INP} type="password" value={form.password} onChange={upd("password")} placeholder="Mínimo 6 caracteres" />
             </Fld>
-            {error && <div style={{ background: "#ef444422", border: "1px solid #ef4444", borderRadius: 10, padding: "10px 14px", color: "#ef4444", fontSize: 13 }}>⚠️ {error}</div>}
+            {error && <div style={{ background: "#ff6b8a22", border: "1px solid " + C.danger, borderRadius: 10, padding: "10px 14px", color: C.danger, fontSize: 13 }}>{error}</div>}
             <button onClick={handleSubmit} disabled={loading} style={{ ...BTN("primary"), padding: "13px", fontSize: 15, marginTop: 4 }}>
               {loading ? "Cargando..." : mode === "login" ? "Entrar →" : "Crear cuenta →"}
             </button>
@@ -370,11 +415,11 @@ function TrainerApp({ user, profile, onLogout }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Space Grotesk',sans-serif", color: C.text }}>
       <style>{GF}</style>
       {/* Header */}
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 800, margin: 0 }}>Gym<span style={{ color: C.primary }}>OS</span> <span style={{ fontSize: 13, fontWeight: 400, color: C.muted }}>— {gym?.name || "Panel"}</span></h1>
+        <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}><span style={{ color: C.primary }}>◆</span> GymOS <span style={{ fontSize: 13, fontWeight: 400, color: C.muted }}>— {gym?.name || "Panel"}</span></h1>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {gym?.invite_code && (
             <div style={{ background: C.primary + "22", border: "1px solid " + C.primary + "44", borderRadius: 8, padding: "5px 12px", display: "flex", alignItems: "center", gap: 8 }}>
@@ -382,14 +427,14 @@ function TrainerApp({ user, profile, onLogout }) {
               <span style={{ fontSize: 14, fontWeight: 800, color: C.primary, letterSpacing: "0.15em" }}>{gym.invite_code}</span>
             </div>
           )}
-          <button onClick={() => goScreen("qr")} style={{ ...BTN("primary"), padding: "8px 16px", fontSize: 13 }}>📱 QR del día</button>
-          <button onClick={() => goScreen("machines")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>🏋️ Máquinas</button>
-          <button onClick={() => goScreen("plans")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>💳 Planes</button>
+          <button onClick={() => goScreen("qr")} style={{ ...BTN("primary"), padding: "8px 16px", fontSize: 13 }}>QR del día</button>
+          <button onClick={() => goScreen("machines")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>Máquinas</button>
+          <button onClick={() => goScreen("plans")} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>Planes</button>
           {gym?.invite_code && (
             <button onClick={() => {
               const link = window.location.origin + "/join/" + gym.invite_code;
               navigator.clipboard.writeText(link).then(() => alert("✓ Link copiado: " + link));
-            }} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>📋 Copiar link</button>
+            }} style={{ ...BTN("ghost"), padding: "8px 16px", fontSize: 13 }}>Copiar link</button>
           )}
           <button onClick={onLogout} style={{ ...BTN("ghost"), padding: "8px 14px", fontSize: 13 }}>Salir</button>
         </div>
@@ -399,17 +444,14 @@ function TrainerApp({ user, profile, onLogout }) {
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 28 }}>
           {[
-            { label: "Clientes activos", value: active.length, icon: "💪", color: C.primary },
-            { label: "Pendientes de activar", value: pending.length, icon: "⏳", color: C.accent },
-            { label: "Máquinas disponibles", value: machines.filter(m => m.available).length, icon: "🏋️", color: C.secondary },
-            { label: "Cuotas vencidas", value: clients.filter(c => c.payments?.some(p => p.status === "overdue")).length, icon: "🔴", color: C.danger },
+            { label: "Clientes activos", value: active.length, color: C.primary },
+            { label: "Pendientes de activar", value: pending.length, color: C.warn },
+            { label: "Máquinas disponibles", value: machines.filter(m => m.available).length, color: C.secondary },
+            { label: "Cuotas vencidas", value: clients.filter(c => c.payments?.some(p => p.status === "overdue")).length, color: C.danger },
           ].map(s => (
-            <Card key={s.label} style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <span style={{ fontSize: 30 }}>{s.icon}</span>
-              <div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: s.color, fontFamily: "'Sora',sans-serif" }}>{s.value}</div>
-                <div style={{ fontSize: 12, color: C.muted }}>{s.label}</div>
-              </div>
+            <Card key={s.label}>
+              <Eyebrow>{s.label}</Eyebrow>
+              <div style={{ fontSize: 36, fontWeight: 700, color: s.color, letterSpacing: "-0.03em", marginTop: 8 }}>{s.value}</div>
             </Card>
           ))}
         </div>
@@ -417,7 +459,7 @@ function TrainerApp({ user, profile, onLogout }) {
         {/* Pending activation */}
         {pending.length > 0 && (
           <Card style={{ marginBottom: 20, borderColor: C.accent + "44" }}>
-            <h3 style={{ margin: "0 0 14px", color: C.accent, fontSize: 14, fontWeight: 700 }}>⏳ Clientes pendientes de activar ({pending.length})</h3>
+            <h3 style={{ margin: "0 0 14px", color: C.warn, fontSize: 14, fontWeight: 600 }}>Clientes pendientes de activar ({pending.length})</h3>
             {pending.map(c => (
               <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid " + C.border }}>
                 <div>
@@ -447,7 +489,7 @@ function TrainerApp({ user, profile, onLogout }) {
             const hasPlan = false; // would check workout_plans
             return (
               <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: idx < active.length - 1 ? "1px solid " + C.border : "none" }}>
-                <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#00ff87)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, color: "#000", flexShrink: 0 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: `linear-gradient(135deg,${C.secondary},${C.primary})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#000", flexShrink: 0 }}>
                   {(c.full_name || "C")[0].toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -456,7 +498,7 @@ function TrainerApp({ user, profile, onLogout }) {
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {hasAssessment ? <Tag text="✓ Test" color={C.primary} /> : <Tag text="Sin test" color={C.muted} />}
-                  {payStatus === "overdue" && <Tag text="⚠️ Vencida" color={C.danger} />}
+                  {payStatus === "overdue" && <Tag text="Vencida" color={C.danger} />}
                   {payStatus === "pending" && daysLeft !== null && daysLeft <= 3 && daysLeft >= 0 && <Tag text={"Vence en " + daysLeft + "d"} color={C.accent} />}
                   {payStatus === "paid" && <Tag text="✓ Pagado" color={C.primary} />}
                 </div>
@@ -605,10 +647,10 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
     setPayments(prev => prev.map(p => p.id === payId ? { ...p, status } : p));
   }
 
-  const TABS = [["perfil","👤 Perfil"],["test","🔬 Test físico"],["plan","🏋️ Plan actual"],["analisis","📊 Análisis corporal"],["pagos","💰 Pagos"]];
+  const TABS = [["perfil","Perfil"],["test","Test físico"],["plan","Plan actual"],["analisis","Análisis corporal"],["pagos","Pagos"]];
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Space Grotesk',sans-serif", color: C.text }}>
       <style>{GF}</style>
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 58, display: "flex", alignItems: "center", gap: 16 }}>
         <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>← Panel</button>
@@ -617,7 +659,7 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
         <Tag text={client.status === "active" ? "Activo" : "Pendiente"} color={client.status === "active" ? C.primary : C.accent} />
         <div style={{ marginLeft: "auto" }}>
           <button onClick={handleGeneratePlan} disabled={generating} style={{ ...BTN("primary"), padding: "8px 18px", fontSize: 13 }}>
-            {generating ? "⏳ Generando..." : "🤖 Generar plan del mes"}
+            {generating ? "Generando..." : "◆ Generar plan del mes"}
           </button>
         </div>
       </div>
@@ -642,7 +684,7 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
                   </div>
                 ))}
               </div>
-              {assessment?.injuries && <div style={{ marginTop: 12, background: "#ef444418", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#ef4444" }}>⚠️ Lesiones: {assessment.injuries}</div>}
+              {assessment?.injuries && <div style={{ marginTop: 12, background: "#ff6b8a18", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.danger }}>Lesiones: {assessment.injuries}</div>}
             </Card>
           </div>
         )}
@@ -656,7 +698,7 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
                 {[["fms_squat","Sentadilla libre con brazos arriba"],["fms_lunge","Zancada en línea"],["fms_shoulder","Movilidad de hombro (manos detrás)"],["fms_hamstring","Elongación isquiotibial (tocar el suelo)"]].map(([k, lbl]) => (
                   <Fld key={k} label={lbl}>
                     <div style={{ display: "flex", gap: 8 }}>
-                      {[["Bien","#16a34a","✅"],["Regular","#ca8a04","⚠️"],["Mal","#dc2626","❌"]].map(([v, col, e]) => {
+                      {[["Bien", C.pos,"✓"],["Regular", C.warn,"~"],["Mal", C.neg,"✗"]].map(([v, col, e]) => {
                         const val = physTest[k] || assessment?.[k];
                         const sel = val === v;
                         return <button key={v} onClick={() => setPhysTest(p => ({ ...p, [k]: v }))} style={{ flex: 1, padding: "8px", borderRadius: 8, border: "2px solid " + (sel ? col : C.border), background: sel ? col + "22" : "transparent", color: sel ? col : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{e} {v}</button>;
@@ -695,13 +737,13 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
                 <p style={{ fontWeight: 600, fontSize: 16, margin: "0 0 6px" }}>Sin plan generado este mes</p>
                 <p style={{ color: C.muted, fontSize: 13, margin: "0 0 20px" }}>Asegurate de que el cliente completó el test inicial, luego generá el plan.</p>
                 <button onClick={handleGeneratePlan} disabled={generating} style={{ ...BTN("primary"), padding: "12px 28px" }}>
-                  {generating ? "⏳ Generando..." : "🤖 Generar plan del mes"}
+                  {generating ? "Generando..." : "◆ Generar plan del mes"}
                 </button>
               </Card>
             ) : (
               <>
-                <Card style={{ background: "linear-gradient(135deg,#1a1a2e,#0f0f1a)", borderColor: C.primary + "44" }}>
-                  <h3 style={{ margin: "0 0 8px", color: C.primary, fontFamily: "'Sora',sans-serif" }}>{MONTHS[new Date().getMonth()]} {new Date().getFullYear()}</h3>
+                <Card style={{ borderColor: C.primary + "44" }}>
+                  <h3 style={{ margin: "0 0 8px", color: C.primary, fontFamily: "'Space Grotesk',sans-serif" }}>{MONTHS[new Date().getMonth()]} {new Date().getFullYear()}</h3>
                   <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>{plan.plan_data?.summary}</p>
                   <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
                     <Tag text={plan.days_per_week + " días/semana"} color={C.secondary} />
@@ -719,12 +761,12 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
                     </div>
                     <div style={{ overflowX: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                        <thead><tr style={{ background: "#0f0f1a" }}>
+                        <thead><tr style={{ background: C.surface }}>
                           {["Ejercicio","Series","Reps","Descanso","Músculos","Indicación"].map(h => <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: C.muted }}>{h}</th>)}
                         </tr></thead>
                         <tbody>
                           {day.exercises?.map((ex, i) => (
-                            <tr key={i} style={{ borderTop: "1px solid " + C.border, background: i % 2 ? "#0f0f1a" : "transparent" }}>
+                            <tr key={i} style={{ borderTop: "1px solid " + C.border, background: i % 2 ? C.surface : "transparent" }}>
                               <td style={{ padding: "9px 10px", fontWeight: 600 }}>{ex.name}</td>
                               <td style={{ padding: "9px 10px", color: C.primary, fontWeight: 700, textAlign: "center" }}>{ex.sets}</td>
                               <td style={{ padding: "9px 10px", color: C.text }}>{ex.reps}</td>
@@ -760,7 +802,7 @@ function BodyAnalysisTab({ assessment, onSave }) {
   const upd = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
   return (
     <Card>
-      <h3 style={{ margin: "0 0 6px", color: C.primary, fontSize: 15 }}>📊 Análisis corporal del nutricionista</h3>
+      <h3 style={{ margin: "0 0 6px", color: C.primary, fontSize: 15 }}>Análisis corporal del nutricionista</h3>
       <p style={{ fontSize: 13, color: C.muted, margin: "0 0 18px" }}>Cargar los datos obtenidos en la medición mensual. Esto ajustará la rutina en la próxima generación.</p>
       {assessment?.analysis_date && <div style={{ background: C.surface, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.muted, marginBottom: 16 }}>Último análisis: {fmtDate(assessment.analysis_date)}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -789,7 +831,7 @@ function PaymentsTab({ payments, plans, onAdd, onUpdateStatus, onDelete, newPaym
         <h3 style={{ margin: "0 0 16px", color: C.primary, fontSize: 15 }}>Registrar cuota</h3>
         {!plans || plans.length === 0 ? (
           <div style={{ background: C.accent + "18", border: "1px solid " + C.accent + "44", borderRadius: 10, padding: "14px 16px", fontSize: 13, color: C.accent }}>
-            ⚠️ No hay planes configurados. Creá planes desde <strong>💳 Planes</strong> en el panel principal.
+            No hay planes configurados. Creá planes desde <strong>Planes</strong> en el panel principal.
           </div>
         ) : (
           <>
@@ -883,7 +925,7 @@ function MembershipPlansScreen({ gym, onBack }) {
   if (loading) return <LoadingScreen />;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Space Grotesk',sans-serif", color: C.text }}>
       <style>{GF}</style>
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 58, display: "flex", alignItems: "center", gap: 14 }}>
         <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>← Panel</button>
@@ -932,7 +974,7 @@ function MembershipPlansScreen({ gym, onBack }) {
                       <div style={{ fontWeight: 700, fontSize: 15 }}>{plan.name}</div>
                       {plan.sessions_per_week && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{plan.sessions_per_week}</div>}
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: 20, color: C.primary, fontFamily: "'Sora',sans-serif" }}>${plan.price?.toLocaleString()}</div>
+                    <div style={{ fontWeight: 800, fontSize: 20, color: C.primary, fontFamily: "'Space Grotesk',sans-serif" }}>${plan.price?.toLocaleString()}</div>
                     <button onClick={() => { setEditingId(plan.id); setEditForm({ name: plan.name, price: plan.price, sessions_per_week: plan.sessions_per_week || "" }); }} style={{ ...BTN("ghost"), padding: "6px 14px", fontSize: 12 }}>Editar</button>
                     <button onClick={() => deletePlan(plan.id)} style={{ ...BTN("ghost"), padding: "6px 10px", fontSize: 12, color: C.danger, borderColor: C.danger + "44" }}>✕</button>
                   </div>
@@ -976,12 +1018,12 @@ function MachinesScreen({ gym, machines: initialMachines, onBack }) {
   }, {});
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Space Grotesk',sans-serif", color: C.text }}>
       <style>{GF}</style>
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 58, display: "flex", alignItems: "center", gap: 14 }}>
         <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>← Panel</button>
         <div style={{ width: 1, height: 18, background: C.border }} />
-        <span style={{ fontWeight: 700 }}>🏋️ Inventario de máquinas</span>
+        <span style={{ fontWeight: 600 }}>Inventario de máquinas</span>
         <Tag text={machines.filter(m => m.available).length + " disponibles"} color={C.primary} />
       </div>
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "26px 24px" }}>
@@ -1001,7 +1043,7 @@ function MachinesScreen({ gym, machines: initialMachines, onBack }) {
         </Card>
         {Object.keys(grouped).length === 0 ? (
           <Card style={{ textAlign: "center", padding: "48px" }}>
-            <div style={{ fontSize: 48, marginBottom: 10 }}>🏋️</div>
+            <div style={{ fontSize: 40, marginBottom: 10, color: C.muted }}>◈</div>
             <p style={{ fontWeight: 600, color: C.muted, fontSize: 15 }}>Sin equipamiento cargado aún</p>
             <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>Cargá el inventario del gimnasio para que la IA genere rutinas correctas</p>
           </Card>
@@ -1043,28 +1085,28 @@ function QRScreen({ gym, onBack }) {
     else if (error) alert("Error: " + error.message);
   }
 
-  const qrImgUrl = qrData ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=GYMOS-${qrData.code}&bgcolor=0a0a0f&color=00ff87&format=png` : null;
+  const qrImgUrl = qrData ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=GYMOS-${qrData.code}&bgcolor=070a12&color=22e4c7&format=png` : null;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text, display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Space Grotesk',sans-serif", color: C.text, display: "flex", flexDirection: "column" }}>
       <style>{GF}</style>
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 58, display: "flex", alignItems: "center", gap: 14 }}>
         <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>← Panel</button>
         <div style={{ width: 1, height: 18, background: C.border }} />
-        <span style={{ fontWeight: 700 }}>📱 QR del día</span>
+        <span style={{ fontWeight: 600 }}>QR del día</span>
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
         <div style={{ textAlign: "center", maxWidth: 400 }}>
           <p style={{ color: C.muted, marginBottom: 8, fontSize: 14 }}>{new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</p>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, margin: "0 0 32px" }}>Código de asistencia</h2>
+          <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 26, fontWeight: 800, margin: "0 0 32px" }}>Código de asistencia</h2>
           {loading ? <div style={{ color: C.muted }}>Cargando...</div> : qrData ? (
             <>
-              <div style={{ background: "#0a0a0f", borderRadius: 20, padding: 20, display: "inline-block", border: "2px solid " + C.primary + "44", marginBottom: 24 }}>
+              <div style={{ background: C.bg, borderRadius: 20, padding: 20, display: "inline-block", border: "1px solid " + C.primary + "55", marginBottom: 24, boxShadow: `0 0 40px -10px ${C.primary}44` }}>
                 <img src={qrImgUrl} alt="QR Code" style={{ width: 280, height: 280, display: "block" }} />
               </div>
-              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 48, fontWeight: 800, color: C.primary, letterSpacing: "0.2em", marginBottom: 8 }}>{qrData.code}</div>
+              <div style={{ fontFamily: C.mono, fontSize: 48, fontWeight: 600, color: C.primary, letterSpacing: "0.2em", marginBottom: 8 }}>{qrData.code}</div>
               <p style={{ color: C.muted, fontSize: 13, marginBottom: 28 }}>Los clientes escanean el QR o ingresan el código manualmente en su app</p>
-              <button onClick={generateQR} style={{ ...BTN("ghost"), padding: "10px 24px" }}>🔄 Regenerar QR</button>
+              <button onClick={generateQR} style={{ ...BTN("ghost"), padding: "10px 24px" }}>Regenerar QR</button>
             </>
           ) : (
             <>
@@ -1122,7 +1164,7 @@ function ClientApp({ user, profile, onLogout }) {
   // Payment alerts
   const latestPayment = payments[0];
   const payAlert = latestPayment ? (
-    latestPayment.status === "overdue" ? { type: "danger", msg: "⚠️ Tu cuota está vencida. Contactá al gimnasio." } :
+    latestPayment.status === "overdue" ? { type: "danger", msg: "Tu cuota está vencida. Contactá al gimnasio." } :
     latestPayment.status === "pending" && daysUntil(latestPayment.due_date) <= 3 && daysUntil(latestPayment.due_date) >= 0
       ? { type: "warning", msg: `⏰ Tu cuota vence en ${daysUntil(latestPayment.due_date)} día${daysUntil(latestPayment.due_date) !== 1 ? "s" : ""}.` }
       : null
@@ -1144,10 +1186,10 @@ function ClientApp({ user, profile, onLogout }) {
   if (screen === "test") return <ClientTestScreen user={user} assessment={assessment} onSave={(a) => { setAssessment(a); setScreen("home"); }} onBack={() => setScreen("home")} />;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Space Grotesk',sans-serif", color: C.text }}>
       <style>{GF}</style>
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 20px", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 800, margin: 0 }}>Gym<span style={{ color: C.primary }}>OS</span></h1>
+        <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}><span style={{ color: C.primary }}>◆</span> GymOS</h1>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 13, color: C.muted }}>{profile.full_name || user.email}</span>
           <button onClick={onLogout} style={{ ...BTN("ghost"), padding: "6px 12px", fontSize: 12 }}>Salir</button>
@@ -1157,8 +1199,8 @@ function ClientApp({ user, profile, onLogout }) {
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Status: pending */}
         {profile.status === "pending" && (
-          <div style={{ background: C.accent + "22", border: "1px solid " + C.accent + "66", borderRadius: 14, padding: "16px 18px" }}>
-            <div style={{ fontWeight: 700, color: C.accent, marginBottom: 4 }}>⏳ Cuenta pendiente de activación</div>
+          <div style={{ background: C.warn + "22", border: "1px solid " + C.warn + "66", borderRadius: 14, padding: "16px 18px" }}>
+            <div style={{ fontWeight: 700, color: C.warn, marginBottom: 4 }}>Cuenta pendiente de activación</div>
             <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>Tu entrenador debe activar tu cuenta. Acercate al gimnasio o contactalo directamente.</p>
           </div>
         )}
@@ -1173,7 +1215,7 @@ function ClientApp({ user, profile, onLogout }) {
         {/* Gym info */}
         {gym && (
           <Card style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: C.primary + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🏠</div>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: `linear-gradient(135deg, ${C.primary}, ${C.secondary})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "#000", fontSize: 16 }}>◆</div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>{gym.name}</div>
               <div style={{ fontSize: 13, color: C.muted }}>Tu gimnasio</div>
@@ -1184,7 +1226,7 @@ function ClientApp({ user, profile, onLogout }) {
         {/* Complete test CTA */}
         {profile.status === "active" && !assessment?.client_completed && (
           <Card style={{ borderColor: C.secondary + "66", background: C.secondary + "11" }}>
-            <div style={{ fontWeight: 700, color: C.secondary, marginBottom: 6 }}>📋 Completá tu test inicial</div>
+            <div style={{ fontWeight: 700, color: C.secondary, marginBottom: 6 }}>Completá tu test inicial</div>
             <p style={{ fontSize: 13, color: C.muted, margin: "0 0 14px" }}>Necesitamos algunos datos para que tu entrenador pueda crear tu plan personalizado.</p>
             <button onClick={() => setScreen("test")} style={{ ...BTN("primary"), background: C.secondary, padding: "10px 20px", fontSize: 13 }}>Completar test →</button>
           </Card>
@@ -1192,14 +1234,14 @@ function ClientApp({ user, profile, onLogout }) {
 
         {/* Today's workout card */}
         {profile.status === "active" && (
-          <Card style={{ background: "linear-gradient(135deg,#1a1a2e,#0f0f1a)", borderColor: C.primary + "44" }}>
-            <div style={{ fontWeight: 700, color: C.primary, fontSize: 14, marginBottom: 4 }}>HOY</div>
-            <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 800, margin: "0 0 14px" }}>
+          <Card glow style={{ borderColor: C.primary + "44" }}>
+            <Eyebrow color={C.primary}>HOY</Eyebrow>
+            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 600, margin: "8px 0 14px", letterSpacing: "-0.02em" }}>
               {todayWorkout ? todayWorkout.name : todayAttendance ? "Entrenamiento completado ✓" : "Rutina del día"}
             </h2>
             {!todayAttendance && plan ? (
               <button onClick={() => setScreen("checkin")} style={{ ...BTN("primary"), padding: "13px 28px", fontSize: 15, width: "100%" }}>
-                📱 Escanear QR para desbloquear
+                Escanear QR para desbloquear
               </button>
             ) : todayWorkout ? (
               <button onClick={() => setScreen("workout")} style={{ ...BTN("primary"), padding: "13px 28px", fontSize: 15, width: "100%" }}>
@@ -1217,11 +1259,11 @@ function ClientApp({ user, profile, onLogout }) {
         {plan && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <Card style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, color: C.primary, fontFamily: "'Sora',sans-serif" }}>{plan.days_per_week}</div>
+              <div style={{ fontSize: 32, fontWeight: 700, color: C.primary, letterSpacing: "-0.03em", marginTop: 6 }}>{plan.days_per_week}</div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>días por semana</div>
             </Card>
             <Card style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, color: C.secondary, fontFamily: "'Sora',sans-serif" }}>{MONTHS[new Date().getMonth()]}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.secondary, marginTop: 6 }}>{MONTHS[new Date().getMonth()]}</div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>plan activo</div>
             </Card>
           </div>
@@ -1281,7 +1323,7 @@ function QRCheckin({ user, profile, gym, plan, onCheckin, onBack }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text, display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Space Grotesk',sans-serif", color: C.text, display: "flex", flexDirection: "column" }}>
       <style>{GF}</style>
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 20px", height: 58, display: "flex", alignItems: "center", gap: 14 }}>
         <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>← Inicio</button>
@@ -1291,23 +1333,23 @@ function QRCheckin({ user, profile, gym, plan, onCheckin, onBack }) {
         <div style={{ textAlign: "center", maxWidth: 360, width: "100%" }}>
           {success ? (
             <div>
-              <div style={{ fontSize: 80, marginBottom: 16 }}>✅</div>
-              <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 26, fontWeight: 800, margin: "0 0 8px", color: C.primary }}>¡Asistencia registrada!</h2>
+              <div style={{ fontSize: 60, marginBottom: 16, color: C.primary }}>◆</div>
+              <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 26, fontWeight: 700, margin: "0 0 8px", color: C.primary, letterSpacing: "-0.02em" }}>¡Asistencia registrada!</h2>
               <p style={{ color: C.muted, fontSize: 14 }}>Abriendo tu rutina de hoy...</p>
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 64, marginBottom: 16 }}>📱</div>
-              <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 24, fontWeight: 800, margin: "0 0 8px" }}>¿Ya estás en el gym?</h2>
+              <div style={{ fontSize: 48, marginBottom: 16, color: C.accent2 || C.secondary }}>◈</div>
+              <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 700, margin: "0 0 8px", letterSpacing: "-0.02em" }}>¿Ya estás en el gym?</h2>
               <p style={{ color: C.muted, fontSize: 14, margin: "0 0 32px", lineHeight: 1.6 }}>Ingresá el código de 6 letras que muestra el entrenador en su pantalla hoy.</p>
               <input
-                style={{ ...INP, textAlign: "center", fontSize: 32, fontWeight: 800, letterSpacing: "0.3em", color: C.primary, padding: "16px", marginBottom: 8 }}
+                style={{ ...INP, textAlign: "center", fontSize: 32, fontWeight: 600, letterSpacing: "0.3em", color: C.primary, padding: "16px", marginBottom: 8, fontFamily: C.mono }}
                 value={code} onChange={e => setCode(e.target.value.toUpperCase().slice(0, 6))}
                 placeholder="XXXXXX" maxLength={6}
               />
               {error && <div style={{ background: C.danger + "22", border: "1px solid " + C.danger + "66", borderRadius: 10, padding: "10px 14px", color: C.danger, fontSize: 13, marginBottom: 14 }}>{error}</div>}
               <button onClick={handleCheckin} disabled={loading || code.length !== 6} style={{ ...BTN("primary"), padding: "14px", fontSize: 16, width: "100%", marginTop: 8, opacity: code.length !== 6 ? 0.5 : 1 }}>
-                {loading ? "Verificando..." : "✓ Confirmar asistencia"}
+                {loading ? "Verificando..." : "Confirmar asistencia"}
               </button>
             </>
           )}
@@ -1555,14 +1597,15 @@ function ExerciseCard({ ex, index }) {
 
   const chipStyle = {
     background: C.surface,
-    border: "1px solid " + C.border,
-    color: C.accent,
-    borderRadius: 20,
+    border: "1px solid " + C.borderStrong,
+    color: C.muted,
+    borderRadius: 999,
     padding: "3px 10px",
-    fontSize: 12,
-    fontWeight: 600,
-    letterSpacing: "0.5px",
+    fontSize: 10,
+    fontWeight: 500,
+    letterSpacing: "0.1em",
     textTransform: "uppercase",
+    fontFamily: C.mono,
   };
 
   const tabStyle = (active) => ({
@@ -1601,7 +1644,7 @@ function ExerciseCard({ ex, index }) {
           {index + 1}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 18, color: C.text, fontWeight: 600, marginBottom: 8 }}>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, color: C.text, fontWeight: 600, marginBottom: 8 }}>
             {ex.name}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -1618,8 +1661,8 @@ function ExerciseCard({ ex, index }) {
         <div style={{ borderTop: "1px solid " + C.border }}>
           {/* Tabs */}
           <div style={{ display: "flex", borderBottom: "1px solid " + C.border, background: C.surface }}>
-            <button style={tabStyle(tab === "details")} onClick={() => setTab("details")}>📋 Detalles</button>
-            <button style={tabStyle(tab === "tutorial")} onClick={handleTutorialTab}>▶ Tutorial</button>
+            <button style={tabStyle(tab === "details")} onClick={() => setTab("details")}>Detalles</button>
+            <button style={tabStyle(tab === "tutorial")} onClick={handleTutorialTab}>Tutorial</button>
           </div>
 
           {/* Tab content */}
@@ -1700,16 +1743,14 @@ function WorkoutScreen({ workout, onBack }) {
       {/* Top nav */}
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 14 }}>
         <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, letterSpacing: "0.5px" }}>← Inicio</button>
-        <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 600, fontSize: 16 }}>Rutina de hoy</span>
+        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 16 }}>Rutina de hoy</span>
       </div>
 
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
         {/* Day header */}
-        <div style={{ background: C.surface, border: "1px solid " + C.border, borderRadius: 16, padding: "22px 24px", marginBottom: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
-          <div style={{ color: C.primary, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>
-            Semana {workout.week} — Día {workout.day_number}
-          </div>
-          <h2 style={{ fontFamily: "'Sora', sans-serif", fontSize: 24, fontWeight: 700, margin: "0 0 6px", color: C.text }}>{workout.name}</h2>
+        <div style={{ background: C.surface, border: "1px solid " + C.border, borderRadius: 14, padding: "22px 24px", marginBottom: 20, boxShadow: `0 0 0 1px ${C.primary}22, 0 20px 40px -20px ${C.primary}22` }}>
+          <Eyebrow color={C.primary} style={{ marginBottom: 8 }}>Semana {workout.week} — Día {workout.day_number}</Eyebrow>
+          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, margin: "0 0 6px", color: C.text, letterSpacing: "-0.02em" }}>{workout.name}</h2>
           <p style={{ color: C.muted, fontSize: 14, margin: "0 0 12px" }}>{workout.focus}</p>
           <hr style={{ border: "none", borderTop: "1px solid " + C.border, margin: "12px 0" }} />
           <span style={{ fontSize: 12, color: C.muted, textTransform: "uppercase", letterSpacing: "0.5px" }}>
@@ -1763,7 +1804,7 @@ function ClientTestScreen({ user, assessment, onSave, onBack }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans',sans-serif", color: C.text }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Space Grotesk',sans-serif", color: C.text }}>
       <style>{GF}</style>
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 20px", height: 58, display: "flex", alignItems: "center", gap: 14 }}>
         <button onClick={onBack} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>← Inicio</button>
@@ -1861,11 +1902,11 @@ function ClientTestScreen({ user, assessment, onSave, onBack }) {
 // ── LOADING ───────────────────────────────────────────────────────
 function LoadingScreen() {
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk',sans-serif" }}>
       <style>{GF + " @keyframes spin{to{transform:rotate(360deg)}}"}</style>
       <div style={{ textAlign: "center" }}>
         <div style={{ width: 48, height: 48, borderRadius: "50%", border: "3px solid " + C.primary, borderTopColor: "transparent", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
-        <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 24, fontWeight: 800, color: "#fff" }}>Gym<span style={{ color: C.primary }}>OS</span></span>
+        <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 700, color: C.text, letterSpacing: "-0.02em" }}><span style={{ color: C.primary }}>◆</span> GymOS</span>
       </div>
     </div>
   );
