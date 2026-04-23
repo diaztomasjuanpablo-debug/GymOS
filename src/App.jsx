@@ -329,23 +329,36 @@ function AuthScreen({ onAuth }) {
             onAuth(data.user.id);
           }
         } else {
-          // Trainer: 1) profile, 2) gym, 3) link — all before signalling auth
-          const { data, error } = await sb.auth.signUp({ email: form.email, password: form.password });
-          if (error) throw error;
-          if (data.user) {
-            const { error: pe } = await sb.from("profiles").insert({
-              id: data.user.id, role, full_name: form.full_name, phone: form.phone, status: "active"
-            });
-            if (pe) throw pe;
-            const inviteCode = uid6();
-            const { data: gym, error: ge } = await sb.from("gyms").insert({
-              name: form.gym_name || "Mi Gimnasio", owner_id: data.user.id, invite_code: inviteCode
-            }).select().single();
-            if (ge) throw ge;
-            const { error: le } = await sb.from("profiles").update({ gym_id: gym.id }).eq("id", data.user.id);
-            if (le) throw le;
-            onAuth(data.user.id);
+          // Trainer registration — strictly sequential to avoid race conditions:
+          // 1) auth user, 2) gym (need gym.id first), 3) profile with gym_id already set
+          const { data: authData, error: authError } = await sb.auth.signUp({ email: form.email, password: form.password });
+          if (authError) {
+            console.error("[Trainer register] signUp error:", authError);
+            throw authError;
           }
+          if (!authData.user) throw new Error("No se pudo crear el usuario. Intentá de nuevo.");
+
+          const userId = authData.user.id;
+
+          const inviteCode = uid6();
+          const { data: gym, error: gymError } = await sb.from("gyms").insert({
+            name: form.gym_name || "Mi Gimnasio", owner_id: userId, invite_code: inviteCode
+          }).select().single();
+          if (gymError) {
+            console.error("[Trainer register] gyms insert error:", gymError);
+            throw new Error("No se pudo crear el gimnasio: " + gymError.message);
+          }
+
+          const { error: profileError } = await sb.from("profiles").insert({
+            id: userId, role, full_name: form.full_name, phone: form.phone,
+            status: "active", gym_id: gym.id
+          });
+          if (profileError) {
+            console.error("[Trainer register] profiles insert error:", profileError);
+            throw new Error("No se pudo crear el perfil: " + profileError.message);
+          }
+
+          onAuth(userId);
         }
       }
     } catch (e) { setError(e.message); } finally { setLoading(false); }
