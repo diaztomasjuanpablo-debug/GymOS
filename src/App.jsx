@@ -1464,6 +1464,7 @@ function ClientApp({ user, profile, onLogout }) {
   const [assessment, setAssessment] = useState(null);
   const [plan, setPlan] = useState(null);
   const [todayAttendance, setTodayAttendance] = useState(null);
+  const [allAttendance, setAllAttendance] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -1481,6 +1482,8 @@ function ClientApp({ user, profile, onLogout }) {
     setPlan(planData);
     const { data: attData } = await sb.from("attendance").select("*").eq("client_id", user.id).eq("date", today()).single();
     setTodayAttendance(attData);
+    const { data: allAttData } = await sb.from("attendance").select("id,date,plan_day_index").eq("client_id", user.id).order("date", { ascending: true });
+    setAllAttendance(allAttData || []);
     const { data: payData } = await sb.from("payments").select("*").eq("client_id", user.id).order("due_date", { ascending: false });
     setPayments(payData || []);
     setLoading(false);
@@ -1602,7 +1605,173 @@ function ClientApp({ user, profile, onLogout }) {
             </Card>
           </div>
         )}
+
+        {/* Full monthly plan */}
+        {plan && plan.plan_data?.days?.length > 0 && (
+          <MonthlyPlanView
+            plan={plan}
+            allAttendance={allAttendance}
+            todayDayIndex={todayDayIndex ?? null}
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+// ── Monthly Plan View ─────────────────────────────────────────────
+function MonthlyPlanView({ plan, allAttendance, todayDayIndex }) {
+  const days = plan?.plan_data?.days || [];
+  const weeks = [...new Set(days.map(d => d.week))].sort((a, b) => a - b);
+
+  // Set of plan indices the client has completed
+  const completedIndices = new Set(
+    allAttendance.map(a => a.plan_day_index).filter(i => i !== null && i !== undefined)
+  );
+
+  // Determine current week from today's day, fallback to week of last completed day
+  const currentWeek = todayDayIndex !== null && todayDayIndex !== undefined
+    ? (days[todayDayIndex]?.week ?? 1)
+    : allAttendance.length > 0
+      ? (days[allAttendance[allAttendance.length - 1]?.plan_day_index]?.week ?? 1)
+      : 1;
+
+  const [openWeeks, setOpenWeeks] = useState(() => new Set([currentWeek]));
+  const [openDayIdx, setOpenDayIdx] = useState(null);
+
+  function toggleWeek(wk) {
+    setOpenWeeks(prev => {
+      const next = new Set(prev);
+      next.has(wk) ? next.delete(wk) : next.add(wk);
+      return next;
+    });
+  }
+
+  function toggleDay(idx) {
+    setOpenDayIdx(prev => prev === idx ? null : idx);
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <Eyebrow style={{ marginBottom: 12 }}>Mi plan del mes</Eyebrow>
+
+      {weeks.map(wk => {
+        const weekDays = days.filter(d => d.week === wk);
+        const isOpen = openWeeks.has(wk);
+        const isCurrent = wk === currentWeek;
+        const weekDone = weekDays.every((_, i) => {
+          const idx = days.indexOf(weekDays[i]);
+          return completedIndices.has(idx);
+        });
+
+        return (
+          <div key={wk} style={{ marginBottom: 10 }}>
+            {/* Week header */}
+            <button onClick={() => toggleWeek(wk)} style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+              background: isCurrent ? C.primary + "14" : C.card,
+              border: `1px solid ${isCurrent ? C.primary + "55" : C.border}`,
+              borderRadius: isOpen ? "12px 12px 0 0" : 12,
+              padding: "12px 16px", cursor: "pointer", color: C.text,
+              fontFamily: C.sans,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontFamily: C.mono, fontSize: 10, color: isCurrent ? C.primary : C.muted,
+                  letterSpacing: "0.12em", textTransform: "uppercase" }}>Semana {wk}</span>
+                {isCurrent && <span style={{ fontFamily: C.mono, fontSize: 9, background: C.primary + "22",
+                  color: C.primary, border: `1px solid ${C.primary}44`, borderRadius: 999,
+                  padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>Actual</span>}
+                {weekDone && !isCurrent && <span style={{ color: C.pos, fontSize: 12 }}>✓</span>}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: C.muted }}>
+                  {weekDays.filter((_, i) => completedIndices.has(days.indexOf(weekDays[i]))).length}/{weekDays.length} días
+                </span>
+                <span style={{ color: C.muted, fontSize: 12, transition: "transform 0.2s",
+                  display: "inline-block", transform: isOpen ? "rotate(180deg)" : "none" }}>▼</span>
+              </div>
+            </button>
+
+            {/* Week days */}
+            {isOpen && (
+              <div style={{ border: `1px solid ${isCurrent ? C.primary + "55" : C.border}`,
+                borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                {weekDays.map(day => {
+                  const dayIdx = days.indexOf(day);
+                  const isToday = dayIdx === todayDayIndex;
+                  const isDone = completedIndices.has(dayIdx);
+                  const isExpanded = openDayIdx === dayIdx;
+
+                  return (
+                    <div key={dayIdx} style={{ borderTop: `1px solid ${C.border}` }}>
+                      {/* Day row */}
+                      <button onClick={() => toggleDay(dayIdx)} style={{
+                        width: "100%", display: "flex", alignItems: "center", gap: 12,
+                        background: isToday ? C.primary + "0e" : "transparent",
+                        border: "none", padding: "12px 16px", cursor: "pointer",
+                        color: C.text, textAlign: "left", fontFamily: C.sans,
+                      }}>
+                        {/* Status icon */}
+                        <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: "flex",
+                          alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700,
+                          background: isToday ? C.primary : isDone ? C.pos + "22" : C.surface,
+                          border: `1px solid ${isToday ? C.primary : isDone ? C.pos + "55" : C.border}`,
+                          color: isToday ? "#000" : isDone ? C.pos : C.muted }}>
+                          {isToday ? "●" : isDone ? "✓" : day.day_number}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: isToday ? 600 : 500,
+                            color: isToday ? C.primary : isDone ? C.muted : C.text,
+                            textDecoration: isDone && !isToday ? "line-through" : "none",
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {day.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{day.focus}</div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                          {isToday && <span style={{ fontFamily: C.mono, fontSize: 9, background: C.primary + "22",
+                            color: C.primary, border: `1px solid ${C.primary}44`, borderRadius: 999,
+                            padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>Hoy</span>}
+                          <span style={{ color: C.muted, fontSize: 11 }}>{day.exercises?.length} ej.</span>
+                          <span style={{ color: C.muted, fontSize: 11, transition: "transform 0.2s",
+                            display: "inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>▼</span>
+                        </div>
+                      </button>
+
+                      {/* Exercises */}
+                      {isExpanded && (
+                        <div style={{ padding: "0 16px 14px", background: C.surface }}>
+                          {day.exercises?.map((ex, ei) => (
+                            <div key={ei} style={{ display: "flex", alignItems: "center", gap: 10,
+                              padding: "10px 0", borderTop: ei ? `1px solid ${C.border}` : "none" }}>
+                              <div style={{ fontFamily: C.mono, fontSize: 11, color: C.primary, width: 20,
+                                textAlign: "center", flexShrink: 0 }}>{ei + 1}</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{ex.name}</div>
+                                {ex.muscles && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{ex.muscles}</div>}
+                              </div>
+                              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                                {[["S", ex.sets], ["R", ex.reps], ["D", ex.rest]].map(([l, v]) => v && (
+                                  <div key={l} style={{ background: C.card, border: `1px solid ${C.border}`,
+                                    borderRadius: 6, padding: "3px 8px", textAlign: "center" }}>
+                                    <div style={{ fontFamily: C.mono, fontSize: 8, color: C.muted,
+                                      letterSpacing: "0.08em", textTransform: "uppercase" }}>{l}</div>
+                                    <div style={{ fontFamily: C.mono, fontSize: 11, color: C.text, fontWeight: 600 }}>{v}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
