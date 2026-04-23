@@ -28,6 +28,99 @@ const MACHINE_CATEGORIES = ["Tren inferior","Tren superior empuje","Tren superio
 // Goal options
 const GOALS = ["Ganar masa muscular","Perder grasa corporal","Mejorar fuerza funcional","Mejorar condición física general","Rendimiento deportivo","Rehabilitación y prevención"];
 
+// ── Exercise library ─────────────────────────────────────────────
+const EXERCISE_LIBRARY = [
+  // PECHO
+  { name: "Press de banca plano con barra", category: "Pecho", muscles: "Pectoral mayor, Tríceps, Deltoides anterior", equipment: "Barra" },
+  { name: "Press de banca inclinado con barra", category: "Pecho", muscles: "Pectoral mayor (porción clavicular), Tríceps", equipment: "Barra" },
+  { name: "Press de banca declinado con barra", category: "Pecho", muscles: "Pectoral mayor (porción esternal), Tríceps", equipment: "Barra" },
+  { name: "Press de banca plano con mancuernas", category: "Pecho", muscles: "Pectoral mayor, Tríceps", equipment: "Mancuernas" },
+  { name: "Press de banca inclinado con mancuernas", category: "Pecho", muscles: "Pectoral mayor (porción clavicular)", equipment: "Mancuernas" },
+  { name: "Aperturas con mancuernas en banco plano", category: "Pecho", muscles: "Pectoral mayor, Deltoides anterior", equipment: "Mancuernas" },
+  { name: "Aperturas en banco inclinado con mancuernas", category: "Pecho", muscles: "Pectoral mayor (porción clavicular)", equipment: "Mancuernas" },
+  { name: "Fondos en paralelas (pecho)", category: "Pecho", muscles: "Pectoral mayor, Tríceps, Deltoides", equipment: "Paralelas" },
+  { name: "Crossover en polea alta", category: "Pecho", muscles: "Pectoral mayor, Deltoides anterior", equipment: "Polea" },
+  { name: "Pullover con mancuerna", category: "Pecho", muscles: "Pectoral mayor, Dorsal ancho", equipment: "Mancuerna" },
+  { name: "Flexiones de pecho", category: "Pecho", muscles: "Pectoral mayor, Tríceps, Deltoides", equipment: "Peso corporal" },
+  // ESPALDA
+  { name: "Dominadas con agarre supino", category: "Espalda", muscles: "Dorsal ancho, Bíceps, Romboides", equipment: "Barra fija" },
+  { name: "Dominadas con agarre prono", category: "Espalda", muscles: "Dorsal ancho, Romboides, Trapecios", equipment: "Barra fija" },
+  { name: "Remo con barra", category: "Espalda", muscles: "Dorsal ancho, Romboides, Trapecios medios, Bíceps", equipment: "Barra" },
+  { name: "Remo con mancuerna a una mano", category: "Espalda", muscles: "Dorsal ancho, Romboides, Redondo mayor", equipment: "Mancuerna" },
+  { name: "Remo en polea baja (cable)", category: "Espalda", muscles: "Dorsal ancho, Romboides, Trapecios medios", equipment: "Polea" },
+  { name: "Jalón al pecho en polea alta", category: "Espalda", muscles: "Dorsal ancho, Bíceps, Romboides", equipment: "Polea" },
+  { name: "Jalón tras nuca en polea alta", category: "Espalda", muscles: "Dorsal ancho, Bíceps", equipment: "Polea" },
+  { name: "Remo en máquina (Hammer Strength)", category: "Espalda", muscles: "Dorsal ancho, Romboides, Trapecios", equipment: "Máquina" },
+  { name: "Peso muerto convencional", category: "Espalda", muscles: "Erector espinal, Glúteos, Isquiotibiales, Trapecios", equipment: "Barra" },
+  { name: "Peso muerto rumano", category: "Espalda", muscles: "Isquiotibiales, Glúteos, Erector espinal", equipment: "Barra" },
+  { name: "Hiperextensiones en banco romano", category: "Espalda", muscles: "Erector espinal, Glúteos, Isquiotibiales", equipment: "Banco romano" },
+  // HOMBROS
+  { name: "Press militar con barra de pie", category: "Hombros", muscles: "Deltoides (todas las porciones), Tríceps, Trapecios", equipment: "Barra" },
+  { name: "Press militar con mancuernas sentado", category: "Hombros", muscles: "Deltoides anterior y medio, Tríceps", equipment: "Mancuernas" },
+  { name: "Elevaciones laterales con mancuernas", category: "Hombros", muscles: "Deltoides medio", equipment: "Mancuernas" },
+  { name: "Elevaciones frontales con mancuernas", category: "Hombros", muscles: "Deltoides anterior", equipment: "Mancuernas" },
+  { name: "Elevaciones laterales en polea baja", category: "Hombros", muscles: "Deltoides medio", equipment: "Polea" },
+  { name: "Pájaro (elevaciones posteriores con mancuernas)", category: "Hombros", muscles: "Deltoides posterior, Romboides", equipment: "Mancuernas" },
+  { name: "Face pull en polea alta", category: "Hombros", muscles: "Deltoides posterior, Romboides, Rotadores externos", equipment: "Polea" },
+  { name: "Encogimientos de hombros con barra (Shrugs)", category: "Hombros", muscles: "Trapecios superiores", equipment: "Barra" },
+  { name: "Encogimientos de hombros con mancuernas", category: "Hombros", muscles: "Trapecios superiores", equipment: "Mancuernas" },
+  // BÍCEPS
+  { name: "Curl de bíceps con barra recta", category: "Bíceps", muscles: "Bíceps braquial, Braquial anterior", equipment: "Barra" },
+  { name: "Curl de bíceps con barra Z (EZ)", category: "Bíceps", muscles: "Bíceps braquial, Braquirradial", equipment: "Barra EZ" },
+  { name: "Curl alterno con mancuernas de pie", category: "Bíceps", muscles: "Bíceps braquial, Braquial anterior", equipment: "Mancuernas" },
+  { name: "Curl martillo con mancuernas", category: "Bíceps", muscles: "Braquirradial, Bíceps braquial", equipment: "Mancuernas" },
+  { name: "Curl en banco Scott (predicador)", category: "Bíceps", muscles: "Bíceps braquial (porción corta)", equipment: "Banco Scott" },
+  { name: "Curl concentrado con mancuerna", category: "Bíceps", muscles: "Bíceps braquial", equipment: "Mancuerna" },
+  { name: "Curl en polea baja con barra", category: "Bíceps", muscles: "Bíceps braquial", equipment: "Polea" },
+  // TRÍCEPS
+  { name: "Press francés con barra EZ (tumbado)", category: "Tríceps", muscles: "Tríceps braquial (las 3 porciones)", equipment: "Barra EZ" },
+  { name: "Extensión de tríceps en polea alta con cuerda", category: "Tríceps", muscles: "Tríceps braquial", equipment: "Polea" },
+  { name: "Extensión de tríceps en polea alta con barra", category: "Tríceps", muscles: "Tríceps braquial", equipment: "Polea" },
+  { name: "Fondos en paralelas (tríceps)", category: "Tríceps", muscles: "Tríceps braquial, Pectoral menor", equipment: "Paralelas" },
+  { name: "Patada de tríceps con mancuerna", category: "Tríceps", muscles: "Tríceps braquial (porción larga)", equipment: "Mancuerna" },
+  { name: "Press cerrado con barra", category: "Tríceps", muscles: "Tríceps braquial, Pectoral, Deltoides anterior", equipment: "Barra" },
+  { name: "Extensión de tríceps sobre la cabeza con mancuerna", category: "Tríceps", muscles: "Tríceps braquial (porción larga)", equipment: "Mancuerna" },
+  // PIERNAS
+  { name: "Sentadilla con barra (back squat)", category: "Piernas", muscles: "Cuádriceps, Glúteos, Isquiotibiales, Erector espinal", equipment: "Barra" },
+  { name: "Sentadilla frontal con barra", category: "Piernas", muscles: "Cuádriceps, Glúteos, Core", equipment: "Barra" },
+  { name: "Sentadilla goblet con mancuerna", category: "Piernas", muscles: "Cuádriceps, Glúteos, Core", equipment: "Mancuerna" },
+  { name: "Prensa de piernas 45°", category: "Piernas", muscles: "Cuádriceps, Glúteos, Isquiotibiales", equipment: "Máquina" },
+  { name: "Extensión de cuádriceps en máquina", category: "Piernas", muscles: "Cuádriceps", equipment: "Máquina" },
+  { name: "Curl de isquiotibiales tumbado en máquina", category: "Piernas", muscles: "Isquiotibiales", equipment: "Máquina" },
+  { name: "Curl de isquiotibiales sentado en máquina", category: "Piernas", muscles: "Isquiotibiales", equipment: "Máquina" },
+  { name: "Zancadas con mancuernas (lunges)", category: "Piernas", muscles: "Cuádriceps, Glúteos, Isquiotibiales", equipment: "Mancuernas" },
+  { name: "Zancadas caminando con barra", category: "Piernas", muscles: "Cuádriceps, Glúteos, Isquiotibiales", equipment: "Barra" },
+  { name: "Sentadilla búlgara (split squat)", category: "Piernas", muscles: "Cuádriceps, Glúteos, Isquiotibiales", equipment: "Mancuernas" },
+  { name: "Hip thrust con barra", category: "Piernas", muscles: "Glúteos, Isquiotibiales", equipment: "Barra" },
+  { name: "Glute bridge con barra", category: "Piernas", muscles: "Glúteos, Isquiotibiales", equipment: "Barra" },
+  { name: "Elevación de talones de pie (pantorrillas)", category: "Piernas", muscles: "Gastrocnemio, Sóleo", equipment: "Máquina o peso corporal" },
+  { name: "Elevación de talones sentado (pantorrillas)", category: "Piernas", muscles: "Sóleo", equipment: "Máquina" },
+  { name: "Abducción de cadera en máquina", category: "Piernas", muscles: "Glúteo medio, Glúteo menor, TFL", equipment: "Máquina" },
+  { name: "Aducción de cadera en máquina", category: "Piernas", muscles: "Aductores", equipment: "Máquina" },
+  { name: "Step-up con mancuernas", category: "Piernas", muscles: "Cuádriceps, Glúteos, Isquiotibiales", equipment: "Mancuernas" },
+  // ABDOMINALES / CORE
+  { name: "Crunch abdominal en suelo", category: "Abdominales", muscles: "Recto abdominal", equipment: "Peso corporal" },
+  { name: "Crunch en máquina de abdominales", category: "Abdominales", muscles: "Recto abdominal", equipment: "Máquina" },
+  { name: "Plancha frontal", category: "Abdominales", muscles: "Core completo, Transverso abdominal", equipment: "Peso corporal" },
+  { name: "Plancha lateral", category: "Abdominales", muscles: "Oblicuos, Core lateral", equipment: "Peso corporal" },
+  { name: "Elevación de piernas colgado en barra", category: "Abdominales", muscles: "Recto abdominal inferior, Flexores de cadera", equipment: "Barra fija" },
+  { name: "Elevación de piernas en banco plano", category: "Abdominales", muscles: "Recto abdominal inferior, Psoas ilíaco", equipment: "Banco" },
+  { name: "Rueda abdominal (ab wheel)", category: "Abdominales", muscles: "Core completo, Dorsal, Hombros", equipment: "Rueda" },
+  { name: "Encogimiento de rodillas en polea alta", category: "Abdominales", muscles: "Recto abdominal", equipment: "Polea" },
+  { name: "Russian twist con disco", category: "Abdominales", muscles: "Oblicuos, Recto abdominal", equipment: "Disco" },
+  { name: "Dead bug", category: "Abdominales", muscles: "Core profundo, Transverso abdominal", equipment: "Peso corporal" },
+  // CARDIO / FUNCIONAL
+  { name: "Burpees", category: "Cardio/Funcional", muscles: "Cuerpo completo", equipment: "Peso corporal" },
+  { name: "Saltos al cajón (box jumps)", category: "Cardio/Funcional", muscles: "Cuádriceps, Glúteos, Pantorrillas", equipment: "Cajón pliométrico" },
+  { name: "Caminata en cinta", category: "Cardio/Funcional", muscles: "Piernas, Core", equipment: "Cinta" },
+  { name: "Trote en cinta", category: "Cardio/Funcional", muscles: "Piernas, Core, Cardiovascular", equipment: "Cinta" },
+  { name: "Bicicleta estática", category: "Cardio/Funcional", muscles: "Cuádriceps, Isquiotibiales, Glúteos", equipment: "Bicicleta" },
+  { name: "Elíptica", category: "Cardio/Funcional", muscles: "Piernas, Brazos, Cardiovascular", equipment: "Elíptica" },
+  { name: "Remo en máquina (ergómetro)", category: "Cardio/Funcional", muscles: "Espalda, Piernas, Core, Brazos", equipment: "Máquina de remo" },
+  { name: "Saltar la soga", category: "Cardio/Funcional", muscles: "Pantorrillas, Coordinación, Cardiovascular", equipment: "Soga" },
+  { name: "Mountain climbers", category: "Cardio/Funcional", muscles: "Core, Hombros, Flexores de cadera", equipment: "Peso corporal" },
+];
+
 // ── AI Plan Generator ─────────────────────────────────────────────
 async function generateWorkoutPlan(assessment, machines) {
   const machineList = machines.filter(m => m.available).map(m => m.name).join(", ") || "Solo peso corporal y mancuernas básicas";
@@ -513,6 +606,215 @@ function TrainerApp({ user, profile, onLogout }) {
 }
 
 // ── CLIENT PROFILE (trainer view) ─────────────────────────────────
+// ── EditPlanModal ─────────────────────────────────────────────────
+function EditPlanModal({ plan, clientId, onClose, onSave }) {
+  const days = plan.plan_data?.days || [];
+  const [editedDays, setEditedDays] = useState(days.map(d => ({ ...d, exercises: d.exercises.map(e => ({ ...e })) })));
+  const [selectedDayIdx, setSelectedDayIdx] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [addingEx, setAddingEx] = useState(false);
+
+  const normalize = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const filtered = search.length >= 2
+    ? EXERCISE_LIBRARY.filter(e => normalize(e.name).includes(normalize(search)) || normalize(e.category).includes(normalize(search))).slice(0, 8)
+    : [];
+
+  const currentDay = editedDays[selectedDayIdx];
+
+  function updateExField(exIdx, field, value) {
+    setEditedDays(prev => {
+      const next = prev.map(d => ({ ...d, exercises: [...d.exercises] }));
+      next[selectedDayIdx].exercises[exIdx] = { ...next[selectedDayIdx].exercises[exIdx], [field]: value };
+      return next;
+    });
+  }
+
+  function removeEx(exIdx) {
+    setEditedDays(prev => {
+      const next = prev.map(d => ({ ...d, exercises: [...d.exercises] }));
+      next[selectedDayIdx].exercises.splice(exIdx, 1);
+      return next;
+    });
+  }
+
+  function addFromLibrary(libEx) {
+    setEditedDays(prev => {
+      const next = prev.map(d => ({ ...d, exercises: [...d.exercises] }));
+      next[selectedDayIdx].exercises.push({ name: libEx.name, muscles: libEx.muscles, sets: 3, reps: "10-12", rest: "60 seg", load: "Moderada", instructions: "" });
+      return next;
+    });
+    setSearch("");
+    setAddingEx(false);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const newPlanData = { ...plan.plan_data, days: editedDays };
+    await onSave(plan.id, newPlanData);
+    setSaving(false);
+    onClose();
+  }
+
+  const INP_SM = { ...INP, padding: "6px 10px", fontSize: 13 };
+  const weeks = [...new Set(editedDays.map(d => d.week))];
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "24px 16px" }}>
+      <div style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 18, width: "100%", maxWidth: 900, fontFamily: C.sans }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1px solid " + C.border }}>
+          <div>
+            <Eyebrow color={C.primary}>Editar plan</Eyebrow>
+            <div style={{ fontSize: 20, fontWeight: 600, marginTop: 4, letterSpacing: "-0.02em", color: C.text }}>
+              {plan.plan_data?.summary?.slice(0, 60) || "Plan del mes"}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: "transparent", border: "none", color: C.muted, fontSize: 22, cursor: "pointer", lineHeight: 1 }}>✕</button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", minHeight: 500 }}>
+          {/* Day selector sidebar */}
+          <div style={{ borderRight: "1px solid " + C.border, padding: "16px 12px", overflowY: "auto", maxHeight: 680 }}>
+            <Eyebrow style={{ padding: "0 8px", marginBottom: 10 }}>Días del plan</Eyebrow>
+            {weeks.map(wk => (
+              <div key={wk} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: C.mono, color: C.muted, letterSpacing: "0.12em", padding: "4px 8px", textTransform: "uppercase" }}>Semana {wk}</div>
+                {editedDays.filter(d => d.week === wk).map(d => {
+                  const idx = editedDays.indexOf(d);
+                  const active = idx === selectedDayIdx;
+                  return (
+                    <button key={idx} onClick={() => { setSelectedDayIdx(idx); setSearch(""); setAddingEx(false); }} style={{
+                      display: "block", width: "100%", textAlign: "left", padding: "8px 12px", borderRadius: 10, marginBottom: 3,
+                      background: active ? C.primary + "18" : "transparent",
+                      border: active ? "1px solid " + C.primary + "55" : "1px solid transparent",
+                      color: active ? C.primary : C.text, cursor: "pointer", fontSize: 12, fontWeight: active ? 600 : 400,
+                    }}>
+                      <div style={{ fontSize: 10, fontFamily: C.mono, color: active ? C.primary : C.muted, marginBottom: 2 }}>Día {d.day_number}</div>
+                      <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name?.split("—")[1]?.trim() || d.name}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* Edit panel */}
+          <div style={{ padding: "20px 24px", overflowY: "auto", maxHeight: 680 }}>
+            {currentDay && (
+              <>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{currentDay.name}</div>
+                  <div style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>{currentDay.focus}</div>
+                </div>
+
+                {/* Exercise list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {currentDay.exercises.map((ex, exIdx) => (
+                    <div key={exIdx} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "14px 16px" }}>
+                      {/* Name with inline search */}
+                      <div style={{ position: "relative", marginBottom: 10 }}>
+                        <input
+                          style={{ ...INP_SM, color: C.text, fontWeight: 500 }}
+                          value={ex.name}
+                          onChange={e => { updateExField(exIdx, "name", e.target.value); setSearch(e.target.value); setAddingEx(false); }}
+                          onFocus={e => setSearch(e.target.value)}
+                          placeholder="Nombre del ejercicio..."
+                        />
+                        {search.length >= 2 && filtered.length > 0 && (
+                          <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: C.surface, border: "1px solid " + C.border, borderRadius: 10, zIndex: 10, marginTop: 4, maxHeight: 200, overflowY: "auto" }}>
+                            {filtered.map((lib, li) => (
+                              <div key={li} onClick={() => { updateExField(exIdx, "name", lib.name); updateExField(exIdx, "muscles", lib.muscles); setSearch(""); }}
+                                style={{ padding: "10px 14px", cursor: "pointer", borderBottom: li < filtered.length - 1 ? "1px solid " + C.border : "none" }}
+                                onMouseEnter={e => e.currentTarget.style.background = C.card}
+                                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                <div style={{ fontSize: 13, color: C.text }}>{lib.name}</div>
+                                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{lib.category} · {lib.muscles}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Fields row */}
+                      <div style={{ display: "grid", gridTemplateColumns: "80px 100px 110px 1fr auto", gap: 8, alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontSize: 9, fontFamily: C.mono, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Series</div>
+                          <input style={INP_SM} type="number" min={1} max={10} value={ex.sets} onChange={e => updateExField(exIdx, "sets", parseInt(e.target.value) || 1)} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 9, fontFamily: C.mono, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Reps</div>
+                          <input style={INP_SM} value={ex.reps} onChange={e => updateExField(exIdx, "reps", e.target.value)} placeholder="10-12" />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 9, fontFamily: C.mono, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Descanso</div>
+                          <input style={INP_SM} value={ex.rest} onChange={e => updateExField(exIdx, "rest", e.target.value)} placeholder="60 seg" />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 9, fontFamily: C.mono, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Músculos</div>
+                          <input style={{ ...INP_SM, color: C.muted }} value={ex.muscles || ""} onChange={e => updateExField(exIdx, "muscles", e.target.value)} placeholder="Músculos trabajados" />
+                        </div>
+                        <button onClick={() => removeEx(exIdx)} style={{ background: C.danger + "18", border: "1px solid " + C.danger + "44", color: C.danger, borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 18 }}>✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add exercise */}
+                <div style={{ marginTop: 14, position: "relative" }}>
+                  {addingEx ? (
+                    <div>
+                      <input
+                        autoFocus
+                        style={{ ...INP, marginBottom: 0 }}
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Buscar ejercicio... (ej: sentadilla, press, curl)"
+                      />
+                      {search.length >= 2 && filtered.length > 0 && (
+                        <div style={{ background: C.surface, border: "1px solid " + C.border, borderRadius: 10, marginTop: 4, maxHeight: 220, overflowY: "auto" }}>
+                          {filtered.map((lib, li) => (
+                            <div key={li} onClick={() => addFromLibrary(lib)}
+                              style={{ padding: "11px 16px", cursor: "pointer", borderBottom: li < filtered.length - 1 ? "1px solid " + C.border : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                              onMouseEnter={e => e.currentTarget.style.background = C.card}
+                              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                              <div>
+                                <div style={{ fontSize: 13, color: C.text }}>{lib.name}</div>
+                                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{lib.category} · {lib.muscles}</div>
+                              </div>
+                              <span style={{ fontSize: 11, color: C.primary, fontFamily: C.mono }}>+ Agregar</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {search.length >= 2 && filtered.length === 0 && (
+                        <div style={{ background: C.surface, border: "1px solid " + C.border, borderRadius: 10, marginTop: 4, padding: "14px 16px", fontSize: 13, color: C.muted }}>Sin resultados para "{search}"</div>
+                      )}
+                      <button onClick={() => { setAddingEx(false); setSearch(""); }} style={{ ...BTN("ghost"), marginTop: 8, fontSize: 12, padding: "7px 14px" }}>Cancelar</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setAddingEx(true); setSearch(""); }} style={{ ...BTN("ghost"), fontSize: 13, padding: "10px 18px", width: "100%" }}>
+                      + Agregar ejercicio
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "16px 24px", borderTop: "1px solid " + C.border }}>
+          <button onClick={onClose} style={{ ...BTN("ghost"), padding: "10px 22px" }}>Cancelar</button>
+          <button onClick={handleSave} disabled={saving} style={{ ...BTN("primary"), padding: "10px 28px", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
   const [tab, setTab] = useState("perfil");
   const [assessment, setAssessment] = useState(client.assessments || null);
@@ -522,6 +824,7 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
   const [saving, setSaving] = useState(false);
   const [physTest, setPhysTest] = useState({});
   const [newPayment, setNewPayment] = useState({ plan_id: "", payment_date: today(), notes: "" });
+  const [editingPlan, setEditingPlan] = useState(false);
 
   useEffect(() => { loadPlan(); }, []);
 
@@ -585,6 +888,11 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
       alert("Plan generado exitosamente ✓ — " + allDays.length + " días en total (4 semanas)");
     } catch (e) { alert("Error: " + e.message); }
     setGenerating(false);
+  }
+
+  async function savePlanEdits(planId, newPlanData) {
+    const { data } = await sb.from("workout_plans").update({ plan_data: newPlanData }).eq("id", planId).select().single();
+    if (data) setPlan(data);
   }
 
   async function saveBodyAnalysis(data) {
@@ -742,12 +1050,25 @@ function ClientProfileTrainer({ client, gym, machines, plans, onBack }) {
               </Card>
             ) : (
               <>
+                {editingPlan && (
+                  <EditPlanModal
+                    plan={plan}
+                    clientId={client.id}
+                    onClose={() => setEditingPlan(false)}
+                    onSave={savePlanEdits}
+                  />
+                )}
                 <Card style={{ borderColor: C.primary + "44" }}>
-                  <h3 style={{ margin: "0 0 8px", color: C.primary, fontFamily: "'Space Grotesk',sans-serif" }}>{MONTHS[new Date().getMonth()]} {new Date().getFullYear()}</h3>
-                  <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>{plan.plan_data?.summary}</p>
-                  <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-                    <Tag text={plan.days_per_week + " días/semana"} color={C.secondary} />
-                    <Tag text={plan.plan_data?.total_days + " días totales"} color={C.primary} />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <h3 style={{ margin: "0 0 8px", color: C.primary, fontFamily: "'Space Grotesk',sans-serif" }}>{MONTHS[new Date().getMonth()]} {new Date().getFullYear()}</h3>
+                      <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>{plan.plan_data?.summary}</p>
+                      <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+                        <Tag text={plan.days_per_week + " días/semana"} color={C.secondary} />
+                        <Tag text={plan.plan_data?.total_days + " días totales"} color={C.primary} />
+                      </div>
+                    </div>
+                    <button onClick={() => setEditingPlan(true)} style={{ ...BTN("ghost"), fontSize: 13, padding: "8px 16px", whiteSpace: "nowrap" }}>✎ Editar plan</button>
                   </div>
                 </Card>
                 {plan.plan_data?.days?.map((day) => (
