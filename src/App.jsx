@@ -1517,9 +1517,9 @@ function ClientApp({ user, profile, onLogout }) {
   if (screen.startsWith("workout_direct_")) {
     const idx = parseInt(screen.split("workout_direct_")[1]);
     const workout = plan?.plan_data?.days?.[idx];
-    if (workout) return <WorkoutScreen workout={workout} onBack={() => setScreen("home")} />;
+    if (workout) return <WorkoutScreen workout={workout} onBack={() => setScreen("home")} clientName={profile.full_name} />;
   }
-  if (screen === "workout" && todayWorkout) return <WorkoutScreen workout={todayWorkout} onBack={() => setScreen("home")} />;
+  if (screen === "workout" && todayWorkout) return <WorkoutScreen workout={todayWorkout} onBack={() => setScreen("home")} clientName={profile.full_name} />;
   if (screen === "test") return <ClientTestScreen user={user} assessment={assessment} onSave={(a) => { setAssessment(a); setScreen("home"); }} onBack={() => setScreen("home")} />;
 
   return (
@@ -2261,9 +2261,36 @@ function ExerciseCard({ ex, index }) {
   );
 }
 
-function WorkoutScreen({ workout, onBack }) {
+function WatermarkOverlay({ clientName }) {
+  const dateStr = new Date().toLocaleDateString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    day: "2-digit", month: "2-digit", year: "numeric",
+  });
+  const text = `${clientName} · GymOS · ${dateStr}`;
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+      pointerEvents: "none", zIndex: 9999, overflow: "hidden", userSelect: "none" }}>
+      {Array.from({ length: 30 }).map((_, i) => (
+        <div key={i} style={{
+          position: "absolute",
+          top: `${(i % 6) * 18}%`,
+          left: `${Math.floor(i / 6) * 25 - 10}%`,
+          transform: "rotate(-30deg)",
+          fontSize: "13px",
+          fontFamily: "JetBrains Mono, monospace",
+          color: "rgba(255,255,255,0.045)",
+          whiteSpace: "nowrap",
+          letterSpacing: "0.05em",
+        }}>{text}</div>
+      ))}
+    </div>
+  );
+}
+
+function WorkoutScreen({ workout, onBack, clientName }) {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, padding: "0 0 40px" }}>
+      {clientName && <WatermarkOverlay clientName={clientName} />}
       <style>{GF}</style>
       {/* Top nav */}
       <div style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 14 }}>
