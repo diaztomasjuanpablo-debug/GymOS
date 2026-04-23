@@ -16,7 +16,7 @@ const sb = createClient(SB_URL, SB_KEY, {
 
 // ── Utils ─────────────────────────────────────────────────────────
 const uid6 = () => Math.random().toString(36).substring(2, 8).toUpperCase();
-const today = () => new Date().toISOString().split("T")[0];
+const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 const daysUntil = (dateStr) => Math.ceil((new Date(dateStr) - new Date()) / 86400000);
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -1505,9 +1505,9 @@ function ClientApp({ user, profile, onLogout }) {
   ) : null;
 
   if (screen === "checkin") return <QRCheckin user={user} profile={profile} gym={gym} plan={plan} onCheckin={async (dayIndex) => {
-    await loadAll();
-    // Navigate directly to workout if we have the plan day
-    const workout = plan?.plan_data?.days?.[dayIndex];
+    // Use loadAll()'s return value — avoids stale closure on the `plan` state variable
+    const { plan: freshPlan } = await loadAll();
+    const workout = freshPlan?.plan_data?.days?.[dayIndex];
     if (workout) setScreen("workout_direct_" + dayIndex);
     else setScreen("home");
   }} onBack={() => setScreen("home")} />;
@@ -1618,41 +1618,63 @@ function QRCheckin({ user, profile, gym, plan, onCheckin, onBack }) {
     if (code.length !== 6) { setError("El código debe tener 6 caracteres."); return; }
     setLoading(true); setError("");
     try {
-      // 1. Verify QR code
+      const todayDate = today(); // Argentine local date — avoids UTC mismatch after 21:00
+
+      // 1. Verify QR code — both sides use toUpperCase + Argentine date
       const { data: qrData, error: qrError } = await sb.from("daily_qr")
         .select("*")
         .eq("gym_id", profile.gym_id)
-        .eq("date", today())
+        .eq("date", todayDate)
         .eq("code", code.toUpperCase())
         .single();
 
       if (qrError || !qrData) {
+        console.error("[Checkin] QR lookup failed — date:", todayDate, "code:", code.toUpperCase(), qrError);
         setError("Código incorrecto o expirado. Pedile el código de hoy a tu entrenador.");
         setLoading(false);
         return;
       }
 
-      // 2. Calculate which day of the plan corresponds to today
-      const { data: allAtt } = await sb.from("attendance")
+      // 2. Count past attendances (excluding today) to determine plan day index
+      const { data: allAtt, error: attCountError } = await sb.from("attendance")
         .select("id")
-        .eq("client_id", user.id);
-      const pastCount = allAtt ? allAtt.length : 0;
-      const totalDays = plan?.plan_data?.days?.length || 12;
+        .eq("client_id", user.id)
+        .lt("date", todayDate);  // only past days, not today
+
+      if (attCountError) {
+        console.error("[Checkin] Error counting past attendances:", attCountError);
+      }
+      const pastCount = allAtt?.length ?? 0;
+      const totalDays = plan?.plan_data?.days?.length;
+      if (!totalDays) {
+        console.error("[Checkin] Plan has no days — plan:", plan);
+        setError("No tenés un plan activo. Pedile al entrenador que genere tu plan.");
+        setLoading(false);
+        return;
+      }
       const nextDayIndex = pastCount % totalDays;
 
-      // 3. Register attendance (without qr_code field — not in schema)
+      // 3. Register attendance — await must complete before navigating
       const { error: attError } = await sb.from("attendance").upsert(
-        { client_id: user.id, gym_id: profile.gym_id, date: today(), plan_day_index: nextDayIndex },
+        { client_id: user.id, gym_id: profile.gym_id, date: todayDate, plan_day_index: nextDayIndex },
         { onConflict: "client_id,date" }
       );
 
-      if (attError) { setError("Error al registrar asistencia: " + attError.message); setLoading(false); return; }
+      if (attError) {
+        console.error("[Checkin] Attendance upsert failed:", attError);
+        setError("Error al registrar asistencia: " + attError.message);
+        setLoading(false);
+        return;
+      }
 
-      // 4. Show success then go directly to workout
+      // 4. Show success — onCheckin awaits loadAll and uses fresh plan from return value
       setSuccess(true);
       setTimeout(() => onCheckin(nextDayIndex), 1200);
 
-    } catch (e) { setError("Error inesperado: " + e.message); }
+    } catch (e) {
+      console.error("[Checkin] Unexpected error:", e);
+      setError("Error inesperado: " + e.message);
+    }
     setLoading(false);
   }
 
