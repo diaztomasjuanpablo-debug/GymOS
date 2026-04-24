@@ -289,6 +289,8 @@ function AuthScreen({ onAuth }) {
   const [form, setForm] = useState({ email: "", password: "", full_name: "", phone: "", invite_code: urlInviteCode });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetView, setResetView] = useState("login"); // "login" | "forgot" | "reset-sent"
+  const [resetEmail, setResetEmail] = useState("");
 
   // If URL has invite code, load gym name to show on screen
   useEffect(() => {
@@ -364,6 +366,65 @@ function AuthScreen({ onAuth }) {
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
+  async function handlePasswordReset() {
+    if (!resetEmail.trim()) { setError("Ingresá tu email."); return; }
+    setLoading(true); setError("");
+    try {
+      const { error } = await sb.auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: "https://gym-os-nine.vercel.app/reset-password",
+      });
+      if (error) throw error;
+      setResetView("reset-sent");
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  // Forgot password view
+  if (resetView === "forgot" || resetView === "reset-sent") {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk',sans-serif" }}>
+        <style>{GF}</style>
+        <div style={{ width: "100%", maxWidth: 420, padding: "0 20px" }}>
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 42, fontWeight: 700, color: C.text, margin: "0 0 6px", letterSpacing: "-0.03em" }}>
+              <span style={{ color: C.primary }}>◆</span> GymOS
+            </h1>
+          </div>
+          <Card>
+            {resetView === "reset-sent" ? (
+              <div style={{ textAlign: "center", padding: "8px 0" }}>
+                <div style={{ fontSize: 40, marginBottom: 16, color: C.primary }}>✓</div>
+                <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 20, fontWeight: 700, color: C.text, margin: "0 0 10px" }}>Revisá tu email</h2>
+                <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.6, margin: "0 0 24px" }}>
+                  Enviamos las instrucciones para restablecer tu contraseña a <strong style={{ color: C.text }}>{resetEmail}</strong>.
+                </p>
+                <button onClick={() => { setResetView("login"); setError(""); }} style={{ ...BTN("ghost"), width: "100%" }}>
+                  ← Volver al login
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 18, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>Recuperar contraseña</h2>
+                  <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>Te enviamos un link para restablecer tu contraseña.</p>
+                </div>
+                <Fld label="Email *">
+                  <input style={INP} type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} placeholder="tu@email.com" />
+                </Fld>
+                {error && <div style={{ background: "#ff6b8a22", border: "1px solid " + C.danger, borderRadius: 10, padding: "10px 14px", color: C.danger, fontSize: 13 }}>{error}</div>}
+                <button onClick={handlePasswordReset} disabled={loading} style={{ ...BTN("primary"), padding: "13px", fontSize: 15 }}>
+                  {loading ? "Enviando..." : "Enviar instrucciones →"}
+                </button>
+                <button onClick={() => { setResetView("login"); setError(""); }} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, textAlign: "center", padding: "4px" }}>
+                  ← Volver al login
+                </button>
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk',sans-serif" }}>
       <style>{GF}</style>
@@ -430,6 +491,13 @@ function AuthScreen({ onAuth }) {
             <Fld label="Contraseña *">
               <input style={INP} type="password" value={form.password} onChange={upd("password")} placeholder="Mínimo 6 caracteres" />
             </Fld>
+            {mode === "login" && (
+              <div style={{ textAlign: "right", marginTop: -6 }}>
+                <button onClick={() => { setResetEmail(form.email); setResetView("forgot"); setError(""); }} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 12, padding: 0 }}>
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+            )}
             {error && <div style={{ background: "#ff6b8a22", border: "1px solid " + C.danger, borderRadius: 10, padding: "10px 14px", color: C.danger, fontSize: 13 }}>{error}</div>}
             <button onClick={handleSubmit} disabled={loading} style={{ ...BTN("primary"), padding: "13px", fontSize: 15, marginTop: 4 }}>
               {loading ? "Cargando..." : mode === "login" ? "Entrar →" : "Crear cuenta →"}
@@ -2465,12 +2533,82 @@ function LoadingScreen() {
 }
 
 // ── ROOT APP ──────────────────────────────────────────────────────
+function UpdatePasswordScreen({ onDone }) {
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  async function handleUpdate() {
+    if (!newPwd || newPwd.length < 6) { setError("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (newPwd !== confirmPwd) { setError("Las contraseñas no coinciden."); return; }
+    setLoading(true); setError("");
+    try {
+      const { error } = await sb.auth.updateUser({ password: newPwd });
+      if (error) throw error;
+      setSuccess(true);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk',sans-serif" }}>
+      <style>{GF}</style>
+      <div style={{ width: "100%", maxWidth: 420, padding: "0 20px" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 42, fontWeight: 700, color: C.text, margin: "0 0 6px", letterSpacing: "-0.03em" }}>
+            <span style={{ color: C.primary }}>◆</span> GymOS
+          </h1>
+        </div>
+        <Card>
+          {success ? (
+            <div style={{ textAlign: "center", padding: "8px 0" }}>
+              <div style={{ fontSize: 40, marginBottom: 16, color: C.primary }}>✓</div>
+              <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 20, fontWeight: 700, color: C.text, margin: "0 0 10px" }}>Contraseña actualizada</h2>
+              <p style={{ color: C.muted, fontSize: 14, margin: "0 0 24px" }}>Tu contraseña se actualizó correctamente.</p>
+              <button onClick={onDone} style={{ ...BTN("primary"), width: "100%", padding: "13px", fontSize: 15 }}>
+                Ir al inicio →
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 18, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>Nueva contraseña</h2>
+                <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>Elegí una contraseña nueva para tu cuenta.</p>
+              </div>
+              <Fld label="Nueva contraseña *">
+                <input style={INP} type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              </Fld>
+              <Fld label="Confirmar contraseña *">
+                <input style={INP} type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} placeholder="Repetí la contraseña" />
+              </Fld>
+              {error && <div style={{ background: "#ff6b8a22", border: "1px solid " + C.danger, borderRadius: 10, padding: "10px 14px", color: C.danger, fontSize: 13 }}>{error}</div>}
+              <button onClick={handleUpdate} disabled={loading} style={{ ...BTN("primary"), padding: "13px", fontSize: 15, marginTop: 4 }}>
+                {loading ? "Guardando..." : "Guardar contraseña →"}
+              </button>
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [updatePasswordView, setUpdatePasswordView] = useState(false);
 
   useEffect(() => {
+    // Detect password recovery link (from email)
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery")) {
+      setUpdatePasswordView(true);
+      setLoading(false);
+      return;
+    }
+
     sb.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) loadProfile(session.user.id);
@@ -2479,6 +2617,9 @@ export default function App() {
     const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
       if (_event === "SIGNED_OUT") {
         setSession(null); setProfile(null); setLoading(false);
+      } else if (_event === "PASSWORD_RECOVERY") {
+        setUpdatePasswordView(true);
+        setLoading(false);
       } else if (_event === "SIGNED_IN") {
         setSession(session);
         // loadProfile is called by AuthScreen.onAuth after all DB ops complete
@@ -2500,6 +2641,7 @@ export default function App() {
   }
 
   if (loading) return <LoadingScreen />;
+  if (updatePasswordView) return <UpdatePasswordScreen onDone={() => { setUpdatePasswordView(false); setLoading(false); }} />;
   if (!session) return <AuthScreen onAuth={(userId) => loadProfile(userId)} />;
   if (!profile) return <LoadingScreen />;
   if (profile.role === "trainer") return <TrainerApp user={session.user} profile={profile} onLogout={handleLogout} />;
